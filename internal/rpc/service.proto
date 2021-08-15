@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package rpc;
+option go_package = "internal/rpc/pb";
+
+
+// Messages for Ping service
+message PingRequest {}
+message PingReply {
+  string message = 1;
+}
+
+// Messages for Peer services
+message PeerRequest {
+  string address = 1;
+  string url = 2;
+}
+message PeerReply {
+  string status = 1;
+  string detail = 2;
+}
+
+// Messages for transactions
+message TxRequest {
+  string data = 1;
+}
+message TxReply {
+  string status = 1;
+  string detail = 2;
+}
+
+// Messages for blocks
+message BlockRequest{
+  string data = 1;
+}
+message BlockReply{
+  string status = 1;
+  string detail = 2;
+}
+
+service NodeService {
+  rpc Ping (PingRequest) returns (PingReply) {}
+  rpc ConnectPeer(PeerRequest) returns (PeerReply) {}
+  rpc DisconnectPeer(PeerRequest) returns (PeerReply) {}
+
+  rpc AcceptTransaction(TxRequest) returns (TxReply) {}
+
+  rpc AcceptBlock(BlockRequest) returns (BlockReply) {}
+}

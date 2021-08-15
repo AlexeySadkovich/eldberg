@@ -1,0 +1,7 @@
+node:
+  port: 8080
+  peers: "/.node/peers.json"
+  privateKey: "/.node/holder.ecdsa"
+  database: "/.node/chain"
+  control:
+    port: 7070
