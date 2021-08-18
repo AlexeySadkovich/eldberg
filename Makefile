@@ -7,4 +7,4 @@ proto:
 	protoc --go_out=. --go-grpc_out=. internal/rpc/service.proto
 
 gci:
-	gci -w ./
+	gci -w -local github.com/AlexeySadkovich/eldberg ./ 
