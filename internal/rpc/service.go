@@ -4,5 +4,5 @@ import "github.com/AlexeySadkovich/eldberg/internal/node"
 
 type Service interface {
 	node.NodeService
-	Ping() (bool, error)
+	Ping() error
 }

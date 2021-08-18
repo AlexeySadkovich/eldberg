@@ -29,20 +29,20 @@ func NewClient(addr string) (rpc.Service, error) {
 	return &NodeClient{client: client}, nil
 }
 
-func (n *NodeClient) Ping() (bool, error) {
+func (n *NodeClient) Ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
 	msg, err := n.client.Ping(ctx, &pb.PingRequest{})
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if msg.Message != "pong" {
-		return false, ErrUnknownAnswer
+		return ErrUnknownAnswer
 	}
 
-	return true, nil
+	return nil
 }
 
 func (n *NodeClient) ConnectPeer(address string, url string) error {

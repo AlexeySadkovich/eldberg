@@ -19,14 +19,18 @@ var (
 )
 
 func NewPeer(address, url string) (*Peer, error) {
-	client, err := client.NewClient(address)
+	cli, err := client.NewClient(address)
 	if err != nil {
 		return nil, fmt.Errorf("create client: %w", err)
+	}
+
+	if err := cli.Ping(); err != nil {
+		return nil, fmt.Errorf("ping: %w", err)
 	}
 
 	return &Peer{
 		address: address,
 		url:     url,
-		client:  client,
+		client:  cli,
 	}, nil
 }

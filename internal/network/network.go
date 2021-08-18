@@ -43,8 +43,7 @@ func (n *Network) Stop() {
 func (n *Network) AddPeer(address, url string) error {
 	peer, err := NewPeer(address, url)
 	if err != nil {
-		err := fmt.Errorf("network.AddPeer: new peer: %w", err)
-		n.logger.Debug(err)
+		err := fmt.Errorf("network.AddPeer: %w", err)
 		return err
 	}
 

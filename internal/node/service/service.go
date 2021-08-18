@@ -57,7 +57,13 @@ func New(lc fx.Lifecycle, p NodeParams) node.NodeService {
 }
 
 func (n *Node) ConnectPeer(address string, url string) error {
-	return n.network.AddPeer(address, url)
+	if err := n.network.AddPeer(address, url); err != nil {
+		err = fmt.Errorf("node.ConnectPeer: %w", err)
+		n.logger.Debug(err)
+		return err
+	}
+
+	return nil
 }
 
 func (n *Node) DisconnectPeer(address string) {
