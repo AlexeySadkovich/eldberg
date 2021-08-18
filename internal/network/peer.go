@@ -4,14 +4,14 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/AlexeySadkovich/eldberg/internal/node"
+	"github.com/AlexeySadkovich/eldberg/internal/rpc"
 	"github.com/AlexeySadkovich/eldberg/internal/rpc/client"
 )
 
 type Peer struct {
 	address string
 	url     string
-	client  node.NodeService
+	client  rpc.Service
 }
 
 var (
