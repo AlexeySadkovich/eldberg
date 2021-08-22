@@ -66,8 +66,8 @@ func (n *Node) ConnectPeer(address string, url string) error {
 	return nil
 }
 
-func (n *Node) DisconnectPeer(address string) {
-	n.network.RemovePeer(address)
+func (n *Node) DisconnectPeer(address string) error {
+	return n.network.RemovePeer(address)
 }
 
 func (n *Node) AcceptTransaction(data string) error {

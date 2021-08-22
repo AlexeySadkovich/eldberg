@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"google.golang.org/grpc"
 
+	"github.com/AlexeySadkovich/eldberg/config"
 	"github.com/AlexeySadkovich/eldberg/internal/rpc"
 	"github.com/AlexeySadkovich/eldberg/internal/rpc/pb"
 )
@@ -30,7 +30,7 @@ func NewClient(addr string) (rpc.Service, error) {
 }
 
 func (n *NodeClient) Ping() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
 	defer cancel()
 
 	msg, err := n.client.Ping(ctx, &pb.PingRequest{})
@@ -45,18 +45,79 @@ func (n *NodeClient) Ping() error {
 	return nil
 }
 
-func (n *NodeClient) ConnectPeer(address string, url string) error {
-	panic("not implemented")
+func (n *NodeClient) ConnectPeer(address, url string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
+	defer cancel()
+
+	req := &pb.PeerRequest{
+		Address: address,
+		Url:     url,
+	}
+	msg, err := n.client.ConnectPeer(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	if msg.Status != "ok" {
+		return fmt.Errorf("%s", msg.Detail)
+	}
+
+	return nil
 }
 
-func (n *NodeClient) DisconnectPeer(address string) {
-	panic("not implemented")
+func (n *NodeClient) DisconnectPeer(address string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
+	defer cancel()
+
+	req := &pb.PeerRequest{
+		Address: address,
+	}
+	msg, err := n.client.DisconnectPeer(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	if msg.Status != "ok" {
+		return fmt.Errorf("%s", msg.Detail)
+	}
+
+	return nil
 }
 
 func (n *NodeClient) AcceptTransaction(data string) error {
-	panic("not implemented")
+	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
+	defer cancel()
+
+	req := &pb.TxRequest{
+		Data: data,
+	}
+	msg, err := n.client.AcceptTransaction(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	if msg.Status != "ok" {
+		return fmt.Errorf("%s", msg.Detail)
+	}
+
+	return nil
 }
 
 func (n *NodeClient) AcceptBlock(data string) error {
-	panic("not implemented")
+	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
+	defer cancel()
+
+	req := &pb.BlockRequest{
+		Data: data,
+	}
+	msg, err := n.client.AcceptBlock(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	if msg.Status != "ok" {
+		return fmt.Errorf("%s", msg.Detail)
+	}
+
+	return nil
 }

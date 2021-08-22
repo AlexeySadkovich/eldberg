@@ -3,11 +3,16 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
 
-const TXSLIMIT = 13
+const (
+	TXSLIMIT = 13
+
+	CtxTimeout = 2 * time.Second
+)
 
 type Config struct {
 	Node struct {

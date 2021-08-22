@@ -11,7 +11,7 @@ import (
 
 type NetworkService interface {
 	AddPeer(address, url string) error
-	RemovePeer(address string)
+	RemovePeer(address string) error
 	PushBlock(block string)
 }
 
@@ -52,8 +52,9 @@ func (n *Network) AddPeer(address, url string) error {
 	return nil
 }
 
-func (n *Network) RemovePeer(address string) {
+func (n *Network) RemovePeer(address string) error {
 	delete(n.peers, address)
+	return nil
 }
 
 func (n *Network) PushBlock(block string) {}
