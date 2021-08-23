@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/syndtr/goleveldb/leveldb"
 	"go.uber.org/zap"
@@ -16,7 +17,9 @@ func provideLogger() *zap.SugaredLogger {
 }
 
 func provideDB(config *config.Config) (*leveldb.DB, error) {
-	db, err := leveldb.OpenFile(config.Node.Database, nil)
+	path := filepath.Join(config.Node.Directory, config.Node.Database)
+
+	db, err := leveldb.OpenFile(path, nil)
 	if err != nil {
 		return nil, fmt.Errorf("open file: %w", err)
 	}

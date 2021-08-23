@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"go.uber.org/fx"
 	"go.uber.org/zap"
 
 	"github.com/AlexeySadkovich/eldberg/internal/rpc/server"
@@ -24,12 +25,26 @@ type Network struct {
 
 var _ NetworkService = (*Network)(nil)
 
-func New(server *server.Server, logger *zap.SugaredLogger) NetworkService {
-	return &Network{
+func New(lc fx.Lifecycle, server *server.Server, logger *zap.SugaredLogger) NetworkService {
+	netw := &Network{
 		server: server,
 		logger: logger,
 		peers:  make(map[string]*Peer),
 	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			logger.Info("starting network...")
+			go netw.Run(ctx)
+			return nil
+		},
+		OnStop: func(c context.Context) error {
+			netw.Stop()
+			return nil
+		},
+	})
+
+	return netw
 }
 
 func (n *Network) Run(ctx context.Context) {

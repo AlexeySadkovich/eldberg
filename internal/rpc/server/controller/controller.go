@@ -1,4 +1,4 @@
-package server
+package controller
 
 import (
 	"context"
@@ -10,6 +10,12 @@ import (
 type NodeServiceController struct {
 	pb.UnimplementedNodeServiceServer
 	nodeService node.NodeService
+}
+
+func New(node node.NodeService) *NodeServiceController {
+	return &NodeServiceController{
+		nodeService: node,
+	}
 }
 
 func (s *NodeServiceController) Ping(ctx context.Context, request *pb.PingRequest) (*pb.PingReply, error) {

@@ -51,11 +51,15 @@ func ReadPeers(filename string) (map[string]string, error) {
 	return peers, nil
 }
 
-func CreateDirectory(dirname string) error {
-	if _, err := os.Stat(dirname); !os.IsNotExist(err) {
-		return nil
+func IsDirectoryExists(dirname string) bool {
+	if _, err := os.Stat(dirname); os.IsNotExist(err) {
+		return false
 	}
 
+	return true
+}
+
+func CreateDirectory(dirname string) error {
 	if err := os.Mkdir(dirname, 0777); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}

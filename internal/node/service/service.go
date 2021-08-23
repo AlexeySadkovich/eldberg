@@ -1,7 +1,6 @@
 package service
 
 import (
-	"context"
 	"fmt"
 
 	"go.uber.org/fx"
@@ -15,9 +14,9 @@ import (
 )
 
 type Node struct {
-	holder  *holder.Holder
-	network *network.Network
-	chain   *blockchain.Chain
+	holder  holder.HolderService
+	network network.NetworkService
+	chain   blockchain.ChainService
 
 	logger *zap.SugaredLogger
 }
@@ -27,33 +26,20 @@ var _ node.NodeService = (*Node)(nil)
 type NodeParams struct {
 	fx.In
 
-	Holder  *holder.Holder
-	Network *network.Network
-	Chain   *blockchain.Chain
+	Holder  holder.HolderService
+	Network network.NetworkService
+	Chain   blockchain.ChainService
 
 	Logger *zap.SugaredLogger
 }
 
-func New(lc fx.Lifecycle, p NodeParams) node.NodeService {
-	node := &Node{
+func New(p NodeParams) node.NodeService {
+	return &Node{
 		holder:  p.Holder,
 		network: p.Network,
 		chain:   p.Chain,
 		logger:  p.Logger,
 	}
-
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			go node.network.Run(ctx)
-			return nil
-		},
-		OnStop: func(c context.Context) error {
-			node.network.Stop()
-			return nil
-		},
-	})
-
-	return node
 }
 
 func (n *Node) ConnectPeer(address string, url string) error {
@@ -92,18 +78,19 @@ func (n *Node) AcceptTransaction(data string) error {
 		return err
 	}
 
-	if n.chain.CurrentBlock == nil {
-		n.chain.CurrentBlock = blockchain.NewBlock(n.holder.Address(), lastHash)
+	if n.chain.GetCurrentBlock() == nil {
+		block := blockchain.NewBlock(n.holder.Address(), lastHash)
+		n.chain.SetCurrentBlock(block)
 	}
 
-	if err := n.chain.CurrentBlock.AddTransaction(tx); err != nil {
+	if err := n.chain.GetCurrentBlock().AddTransaction(tx); err != nil {
 		err = fmt.Errorf("node.AddTransaction: %w", err)
 		n.logger.Debug(err)
 		return err
 	}
 
-	if n.chain.CurrentBlock.Fullness() == config.TXSLIMIT {
-		block := n.chain.CurrentBlock.Serialize()
+	if n.chain.GetCurrentBlock().Fullness() == config.TXSLIMIT {
+		block := n.chain.GetCurrentBlock().Serialize()
 		n.network.PushBlock(block)
 	}
 

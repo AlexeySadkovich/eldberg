@@ -14,6 +14,7 @@ import (
 	"github.com/AlexeySadkovich/eldberg/internal/network"
 	"github.com/AlexeySadkovich/eldberg/internal/node/service"
 	"github.com/AlexeySadkovich/eldberg/internal/rpc/server"
+	"github.com/AlexeySadkovich/eldberg/internal/rpc/server/controller"
 	"github.com/AlexeySadkovich/eldberg/internal/storage"
 )
 
@@ -28,6 +29,9 @@ func main() {
 		fx.Provide(network.New),
 		fx.Provide(blockchain.New),
 		fx.Provide(service.New),
+		fx.Provide(controller.New),
+
+		fx.Invoke(server.Register),
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())

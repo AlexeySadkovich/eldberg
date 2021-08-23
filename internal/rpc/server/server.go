@@ -10,7 +10,12 @@ import (
 
 	"github.com/AlexeySadkovich/eldberg/config"
 	"github.com/AlexeySadkovich/eldberg/internal/rpc/pb"
+	"github.com/AlexeySadkovich/eldberg/internal/rpc/server/controller"
 )
+
+func Register(s *Server, nsController *controller.NodeServiceController) {
+	pb.RegisterNodeServiceServer(s.server, nsController)
+}
 
 type Server struct {
 	server *grpc.Server
@@ -27,9 +32,6 @@ func New(config *config.Config, logger *zap.SugaredLogger) *Server {
 		server: rpcServer,
 		port:   port,
 	}
-
-	instance := &NodeServiceController{}
-	pb.RegisterNodeServiceServer(rpcServer, instance)
 
 	return server
 }

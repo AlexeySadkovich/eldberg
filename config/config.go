@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"time"
 
+	"github.com/AlexeySadkovich/eldberg/internal/utils"
 	"gopkg.in/yaml.v2"
 )
 
@@ -17,6 +18,7 @@ const (
 type Config struct {
 	Node struct {
 		Port           int    `yaml:"port"`
+		Directory      string `yaml:"dir"`
 		PeersPath      string `yaml:"peers"`
 		PrivateKeyPath string `yaml:"privateKey"`
 		Database       string `yaml:"database"`
@@ -36,6 +38,12 @@ func New() (*Config, error) {
 
 	if err := yaml.Unmarshal(file, cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
+	}
+
+	if !utils.IsDirectoryExists(cfg.Node.Directory) {
+		if err := utils.CreateDirectory(cfg.Node.Directory); err != nil {
+			return nil, fmt.Errorf("create node directory: %w", err)
+		}
 	}
 
 	return cfg, nil

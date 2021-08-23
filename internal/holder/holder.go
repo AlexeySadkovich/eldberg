@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"path/filepath"
 
 	"github.com/AlexeySadkovich/eldberg/config"
 	"github.com/AlexeySadkovich/eldberg/internal/utils"
@@ -29,14 +30,15 @@ type Holder struct {
 
 var _ HolderService = (*Holder)(nil)
 
-func New(config *config.Config) (*Holder, error) {
+func New(config *config.Config) (HolderService, error) {
 	holder := new(Holder)
 
 	// Check if private key already exists
 	// and if it doesn't then create new Holder
 	// but if exists then restore Holder from
 	// private key
-	holderPrivateKey, err := utils.ReadHolderPrivateKey(config.Node.PrivateKeyPath)
+	path := filepath.Join(config.Node.Directory, config.Node.PrivateKeyPath)
+	holderPrivateKey, err := utils.ReadHolderPrivateKey(path)
 	if err != nil {
 		return nil, fmt.Errorf("read private key: %w", err)
 	}
@@ -47,7 +49,7 @@ func New(config *config.Config) (*Holder, error) {
 		}
 
 		privateKey := holder.PrivateKeyString()
-		if err := utils.StoreHolderPrivateKey(config.Node.PrivateKeyPath, privateKey); err != nil {
+		if err := utils.StoreHolderPrivateKey(path, privateKey); err != nil {
 			return nil, fmt.Errorf("store private key: %w", err)
 		}
 	} else {

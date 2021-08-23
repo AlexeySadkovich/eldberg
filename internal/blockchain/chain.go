@@ -11,26 +11,29 @@ import (
 type ChainService interface {
 	AddBlock(block *Block) error
 
+	SetCurrentBlock(block *Block)
+	GetCurrentBlock() *Block
+
 	GetHeight() int
 	GetLastHash() ([]byte, error)
 }
 
 type Chain struct {
-	CurrentBlock *Block
-	Height       int
+	currentBlock *Block
+	height       int
 	storage      storage.StorageService
 }
 
 var _ ChainService = (*Chain)(nil)
 
-func New(storage storage.StorageService, holder holder.HolderService) (*Chain, error) {
+func New(storage storage.StorageService, holder holder.HolderService) (ChainService, error) {
 	chain := &Chain{
 		storage: storage,
 	}
-	chain.Height = chain.GetHeight()
+	chain.height = chain.GetHeight()
 
 	// Create genesis block if chain is empty
-	if chain.Height == 0 {
+	if chain.height == 0 {
 		genesis := NewBlock(holder.Address(), []byte{})
 
 		tx := NewTransaction(
@@ -60,9 +63,17 @@ func (c *Chain) AddBlock(block *Block) error {
 	// Increase chain height on block addition
 	// to avoid iterating through all chain
 	// when need to get height
-	c.Height++
+	c.height++
 
 	return nil
+}
+
+func (c *Chain) SetCurrentBlock(block *Block) {
+	c.currentBlock = block
+}
+
+func (c *Chain) GetCurrentBlock() *Block {
+	return c.currentBlock
 }
 
 func (c *Chain) GetHeight() int {
