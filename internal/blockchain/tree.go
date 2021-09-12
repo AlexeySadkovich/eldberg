@@ -15,6 +15,7 @@ func NewMerkleTree(transactions []*Transaction) *MerkleTree {
 
 func (mt *MerkleTree) AddTransaction(tx *Transaction) {
 	mt.transactions = append(mt.transactions, tx)
+	mt.length++
 }
 
 func (mt *MerkleTree) CalculateRoot() []byte {
@@ -41,9 +42,7 @@ func (mt *MerkleTree) CalculateRoot() []byte {
 		return subTree[0]
 	}
 
-	root := mt.calculate(subTree)
-
-	return root
+	return mt.calculate(subTree)
 }
 
 func (mt *MerkleTree) calculate(tree [][]byte) []byte {

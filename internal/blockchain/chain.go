@@ -43,8 +43,7 @@ func New(storage storage.StorageService, holder holder.HolderService) (ChainServ
 			50,
 		)
 
-		err := genesis.AddTransaction(tx)
-		if err != nil {
+		if err := genesis.AddTransaction(tx); err != nil {
 			return nil, fmt.Errorf("creating genesis block failed: %w", err)
 		}
 	}
