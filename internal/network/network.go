@@ -87,6 +87,7 @@ func (n *Network) PushBlock(block []byte) error {
 func (n *Network) offerBlockToPeer(block []byte, peer *Peer, push *pusher, wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	push.incTotal()
 	if err := peer.OfferBlock(block); err != nil {
 		if errors.Is(err, ErrPeerUnavailable) {
 			return
