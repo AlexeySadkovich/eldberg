@@ -2,11 +2,14 @@ package network
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"sync"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
+	"github.com/AlexeySadkovich/eldberg/internal/node"
 	"github.com/AlexeySadkovich/eldberg/internal/rpc/server"
 )
 
@@ -63,4 +66,68 @@ func (n *Network) RemovePeer(address string) error {
 	return nil
 }
 
-func (n *Network) PushBlock(block []byte) {}
+func (n *Network) PushBlock(block []byte) error {
+	push := new(pusher)
+	wg := sync.WaitGroup{}
+
+	for _, peer := range n.peers {
+		wg.Add(1)
+		go n.offerBlockToPeer(block, peer, push, &wg)
+	}
+
+	wg.Wait()
+
+	if push.invalid() {
+		return ErrBlockNotAccepted
+	}
+
+	return nil
+}
+
+func (n *Network) offerBlockToPeer(block []byte, peer *Peer, push *pusher, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	if err := peer.OfferBlock(block); err != nil {
+		if errors.Is(err, ErrPeerUnavailable) {
+			return
+		}
+
+		if errors.Is(err, node.ErrInvalidBlock) {
+			push.incInvalid()
+		}
+	}
+}
+
+// pusher controls process of pushing
+// block to network
+type pusher struct {
+	sync.Mutex
+	total         int
+	invalidations int
+}
+
+func (p *pusher) incTotal() {
+	p.Lock()
+	p.total++
+	p.Unlock()
+}
+
+func (p *pusher) incInvalid() {
+	p.Lock()
+	p.invalidations++
+	p.Unlock()
+}
+
+func (p *pusher) invalid() bool {
+	diff := float64(p.total - p.invalidations)
+	delta := (diff / float64(p.invalidations)) * 100
+
+	// delta is percentage of peers which didn't
+	// accept block.
+	// TODO: update invalidations check
+	if delta > 30 {
+		return true
+	}
+
+	return false
+}

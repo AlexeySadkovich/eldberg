@@ -66,7 +66,7 @@ func (n *Node) AcceptTransaction(data []byte) error {
 	}
 
 	if !tx.IsValid() {
-		err := fmt.Errorf("node.AcceptTransaction: %w", ErrInvalidTx)
+		err := fmt.Errorf("node.AcceptTransaction: %w", node.ErrInvalidTx)
 		n.logger.Debug(err)
 		return err
 	}
@@ -97,7 +97,11 @@ func (n *Node) AcceptTransaction(data []byte) error {
 			return err
 		}
 
-		n.network.PushBlock(block)
+		if err := n.network.PushBlock(block); err != nil {
+			err = fmt.Errorf("node.AddTransaction: failed to push block %w", err)
+			n.logger.Debug(err)
+			return err
+		}
 	}
 
 	return nil
@@ -113,7 +117,7 @@ func (n *Node) AcceptBlock(data []byte) error {
 	}
 
 	if !block.IsValid() {
-		err := fmt.Errorf("node.AcceptBlock: %w", ErrInvalidBlock)
+		err := fmt.Errorf("node.AcceptBlock: %w", node.ErrInvalidBlock)
 		n.logger.Debug(err)
 		return err
 	}

@@ -1,4 +1,4 @@
-package service
+package node
 
 import "errors"
 
