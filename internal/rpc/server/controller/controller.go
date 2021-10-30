@@ -9,10 +9,10 @@ import (
 
 type NodeServiceController struct {
 	pb.UnimplementedNodeServiceServer
-	nodeService node.NodeService
+	nodeService node.Service
 }
 
-func New(node node.NodeService) *NodeServiceController {
+func New(node node.Service) *NodeServiceController {
 	return &NodeServiceController{
 		nodeService: node,
 	}

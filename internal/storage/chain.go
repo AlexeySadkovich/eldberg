@@ -5,20 +5,20 @@ import (
 	"fmt"
 )
 
-type IChainStorage interface {
+type ChainStorage interface {
 	GetHeight() int
 	Save([]byte, []byte) error
 	GetLast() ([]byte, []byte, error)
 	GetLastHash() ([]byte, error)
 }
 
-type ChainStorage struct {
-	storage *Storage
+type chainStorage struct {
+	storage *storage
 }
 
 var ErrBlockNotFound = errors.New("block not found")
 
-func (s *ChainStorage) Save(hash, data []byte) error {
+func (s *chainStorage) Save(hash, data []byte) error {
 	err := s.storage.db.Put(hash, data, nil)
 	if err != nil {
 		return fmt.Errorf("put: %w", err)
@@ -27,7 +27,7 @@ func (s *ChainStorage) Save(hash, data []byte) error {
 	return nil
 }
 
-func (s *ChainStorage) GetHeight() int {
+func (s *chainStorage) GetHeight() int {
 	var height int
 
 	iter := s.storage.db.NewIterator(nil, nil)
@@ -38,7 +38,7 @@ func (s *ChainStorage) GetHeight() int {
 	return height
 }
 
-func (s *ChainStorage) GetLast() ([]byte, []byte, error) {
+func (s *chainStorage) GetLast() ([]byte, []byte, error) {
 	iter := s.storage.db.NewIterator(nil, nil)
 
 	if ok := iter.Last(); !ok {
@@ -48,7 +48,7 @@ func (s *ChainStorage) GetLast() ([]byte, []byte, error) {
 	return iter.Key(), iter.Value(), nil
 }
 
-func (s *ChainStorage) GetLastHash() ([]byte, error) {
+func (s *chainStorage) GetLastHash() ([]byte, error) {
 	iter := s.storage.db.NewIterator(nil, nil)
 
 	if ok := iter.Last(); !ok {

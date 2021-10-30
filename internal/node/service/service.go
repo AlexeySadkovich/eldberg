@@ -14,26 +14,26 @@ import (
 )
 
 type Node struct {
-	holder  holder.HolderService
-	network network.NetworkService
-	chain   blockchain.ChainService
+	holder  *holder.Holder
+	network *network.Network
+	chain   *blockchain.Chain
 
 	logger *zap.SugaredLogger
 }
 
-var _ node.NodeService = (*Node)(nil)
+var _ node.Service = (*Node)(nil)
 
 type NodeParams struct {
 	fx.In
 
-	Holder  holder.HolderService
-	Network network.NetworkService
-	Chain   blockchain.ChainService
+	Holder  *holder.Holder
+	Network *network.Network
+	Chain   *blockchain.Chain
 
 	Logger *zap.SugaredLogger
 }
 
-func New(p NodeParams) node.NodeService {
+func New(p NodeParams) node.Service {
 	return &Node{
 		holder:  p.Holder,
 		network: p.Network,

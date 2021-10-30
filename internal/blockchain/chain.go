@@ -8,25 +8,13 @@ import (
 	"github.com/AlexeySadkovich/eldberg/internal/storage"
 )
 
-type ChainService interface {
-	AddBlock(block *Block) error
-
-	SetCurrentBlock(block *Block)
-	GetCurrentBlock() *Block
-
-	GetHeight() int
-	GetLastHash() ([]byte, error)
-}
-
 type Chain struct {
 	currentBlock *Block
 	height       int
-	storage      storage.StorageService
+	storage      storage.Storage
 }
 
-var _ ChainService = (*Chain)(nil)
-
-func New(storage storage.StorageService, holder holder.HolderService) (ChainService, error) {
+func New(storage storage.Storage, holder *holder.Holder) (*Chain, error) {
 	chain := &Chain{
 		storage: storage,
 	}

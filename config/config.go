@@ -5,8 +5,9 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/AlexeySadkovich/eldberg/internal/utils"
 	"gopkg.in/yaml.v2"
+
+	"github.com/AlexeySadkovich/eldberg/internal/utils"
 )
 
 const (

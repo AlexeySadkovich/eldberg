@@ -10,12 +10,6 @@ import (
 	"github.com/AlexeySadkovich/eldberg/internal/rpc/server"
 )
 
-type NetworkService interface {
-	AddPeer(address, url string) error
-	RemovePeer(address string) error
-	PushBlock(block string)
-}
-
 type Network struct {
 	server *server.Server
 	logger *zap.SugaredLogger
@@ -23,9 +17,7 @@ type Network struct {
 	peers map[string]*Peer
 }
 
-var _ NetworkService = (*Network)(nil)
-
-func New(lc fx.Lifecycle, server *server.Server, logger *zap.SugaredLogger) NetworkService {
+func New(lc fx.Lifecycle, server *server.Server, logger *zap.SugaredLogger) *Network {
 	netw := &Network{
 		server: server,
 		logger: logger,
@@ -58,8 +50,7 @@ func (n *Network) Stop() {
 func (n *Network) AddPeer(address, url string) error {
 	peer, err := NewPeer(address, url)
 	if err != nil {
-		err := fmt.Errorf("network.AddPeer: %w", err)
-		return err
+		return fmt.Errorf("network.AddPeer: %w", err)
 	}
 
 	n.peers[address] = peer

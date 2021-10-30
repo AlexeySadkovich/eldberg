@@ -4,29 +4,29 @@ import (
 	"github.com/syndtr/goleveldb/leveldb"
 )
 
-type StorageService interface {
-	Chain() IChainStorage
+type Storage interface {
+	Chain() ChainStorage
 }
 
-type Storage struct {
+type storage struct {
 	db    *leveldb.DB
-	chain *ChainStorage
+	chain *chainStorage
 }
 
-var _ StorageService = (*Storage)(nil)
+var _ Storage = (*storage)(nil)
 
-func New(db *leveldb.DB) StorageService {
-	return &Storage{
+func New(db *leveldb.DB) Storage {
+	return &storage{
 		db: db,
 	}
 }
 
-func (s *Storage) Chain() IChainStorage {
+func (s *storage) Chain() ChainStorage {
 	if s.chain != nil {
 		return s.chain
 	}
 
-	s.chain = &ChainStorage{
+	s.chain = &chainStorage{
 		storage: s,
 	}
 

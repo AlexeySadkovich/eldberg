@@ -13,12 +13,6 @@ import (
 	"github.com/AlexeySadkovich/eldberg/internal/utils"
 )
 
-type HolderService interface {
-	Address() string
-	PrivateKey() *ecdsa.PrivateKey
-	PrivateKeyString() string
-}
-
 /*
 Holder represents the user who hold the transaction or block
 */
@@ -28,9 +22,7 @@ type Holder struct {
 	encoder    *base64.Encoding
 }
 
-var _ HolderService = (*Holder)(nil)
-
-func New(config *config.Config) (HolderService, error) {
+func New(config *config.Config) (*Holder, error) {
 	holder := new(Holder)
 
 	// Check if private key already exists
