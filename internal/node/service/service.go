@@ -56,8 +56,8 @@ func (n *Node) DisconnectPeer(address string) error {
 	return n.network.RemovePeer(address)
 }
 
-func (n *Node) AcceptTransaction(data string) error {
-	tx := new(blockchain.Transaction)
+func (n *Node) AcceptTransaction(data []byte) error {
+	tx := blockchain.EmptyTransaction()
 
 	if err := tx.Deserialize(data); err != nil {
 		err = fmt.Errorf("node.AcceptTransaction: failed to deserialize transaction: %w", err)
@@ -90,15 +90,21 @@ func (n *Node) AcceptTransaction(data string) error {
 	}
 
 	if n.chain.GetCurrentBlock().Fullness() == config.TXSLIMIT {
-		block := n.chain.GetCurrentBlock().Serialize()
+		block, err := n.chain.GetCurrentBlock().Serialize()
+		if err != nil {
+			err = fmt.Errorf("node.AddTransaction: failed to serialize block %w", err)
+			n.logger.Debug(err)
+			return err
+		}
+
 		n.network.PushBlock(block)
 	}
 
 	return nil
 }
 
-func (n *Node) AcceptBlock(data string) error {
-	block := new(blockchain.Block)
+func (n *Node) AcceptBlock(data []byte) error {
+	block := blockchain.EmptyBlock()
 
 	if err := block.Deserialize(data); err != nil {
 		err = fmt.Errorf("node.AcceptBlock: failed to deserialize block: %w", err)

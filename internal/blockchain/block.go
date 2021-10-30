@@ -34,6 +34,10 @@ func NewBlock(holderAddr string, prevHash []byte) *Block {
 	}
 }
 
+func EmptyBlock() *Block {
+	return new(Block)
+}
+
 func (b *Block) AddTransaction(tx *Transaction) error {
 	if !tx.IsValid() {
 		return fmt.Errorf("invalid transaction")
@@ -75,15 +79,20 @@ func (b *Block) Bytes() []byte {
 	return buf.Bytes()
 }
 
-func (b *Block) Serialize() string {
-	blockStr, err := json.Marshal(b)
+func (b *Block) Serialize() ([]byte, error) {
+	data, err := json.Marshal(b)
 	if err != nil {
-		return ""
+		return nil, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(blockStr)
+	return data, nil
 }
 
-func (b *Block) Deserialize(data string) error {
-	return json.Unmarshal([]byte(data), &b)
+func (b *Block) Deserialize(data []byte) error {
+	err := json.Unmarshal(data, &b)
+	if err != nil {
+		return fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return nil
 }

@@ -22,7 +22,7 @@ message PeerReply {
 
 // Messages for transactions
 message TxRequest {
-  string data = 1;
+  bytes data = 1;
 }
 message TxReply {
   string status = 1;
@@ -31,7 +31,7 @@ message TxReply {
 
 // Messages for blocks
 message BlockRequest{
-  string data = 1;
+  bytes data = 1;
 }
 message BlockReply{
   string status = 1;

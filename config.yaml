@@ -7,6 +7,6 @@ node:
 chain:
   database: "chain"
   genesis:
-    value: 50
+    value: 50.0
 holder:
   privateKey: "holder.ecdsa"

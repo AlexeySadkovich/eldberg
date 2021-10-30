@@ -84,7 +84,7 @@ func (n *NodeClient) DisconnectPeer(address string) error {
 	return nil
 }
 
-func (n *NodeClient) AcceptTransaction(data string) error {
+func (n *NodeClient) AcceptTransaction(data []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
 	defer cancel()
 
@@ -103,7 +103,7 @@ func (n *NodeClient) AcceptTransaction(data string) error {
 	return nil
 }
 
-func (n *NodeClient) AcceptBlock(data string) error {
+func (n *NodeClient) AcceptBlock(data []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
 	defer cancel()
 

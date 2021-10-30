@@ -63,4 +63,4 @@ func (n *Network) RemovePeer(address string) error {
 	return nil
 }
 
-func (n *Network) PushBlock(block string) {}
+func (n *Network) PushBlock(block []byte) {}

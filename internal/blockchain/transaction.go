@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"encoding/gob"
 	"encoding/json"
+	"fmt"
 
 	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
 	"github.com/AlexeySadkovich/eldberg/internal/blockchain/utils"
@@ -34,6 +35,10 @@ func NewTransaction(holderAddr string, holderPK *ecdsa.PrivateKey, receiver stri
 	return tx
 }
 
+func EmptyTransaction() *Transaction {
+	return new(Transaction)
+}
+
 func (tx *Transaction) Bytes() []byte {
 	buf := new(bytes.Buffer)
 	enc := gob.NewEncoder(buf)
@@ -42,17 +47,22 @@ func (tx *Transaction) Bytes() []byte {
 	return buf.Bytes()
 }
 
-func (tx *Transaction) Serialize() string {
-	txBytes, err := json.Marshal(tx)
+func (tx *Transaction) Serialize() ([]byte, error) {
+	data, err := json.Marshal(tx)
 	if err != nil {
-		return ""
+		return nil, fmt.Errorf("marshal: %w", err)
 	}
 
-	return string(txBytes)
+	return data, nil
 }
 
-func (tx *Transaction) Deserialize(data string) error {
-	return json.Unmarshal([]byte(data), &tx)
+func (tx *Transaction) Deserialize(data []byte) error {
+	err := json.Unmarshal(data, &tx)
+	if err != nil {
+		return fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return nil
 }
 
 func (tx *Transaction) IsValid() bool {
