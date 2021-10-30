@@ -16,26 +16,45 @@ const (
 	CtxTimeout = 2 * time.Second
 )
 
-type Config struct {
-	Node struct {
-		Port           int    `yaml:"port"`
-		Directory      string `yaml:"dir"`
-		PeersPath      string `yaml:"peers"`
-		PrivateKeyPath string `yaml:"privateKey"`
-		Database       string `yaml:"database"`
-		Control        struct {
-			Port int `yaml:"port"`
-		} `yaml:"control"`
-	} `yaml:"node"`
+type Config interface {
+	GetNodeConfig() *nodeConfig
+	GetChainConfig() *chainConfig
+	GetHolderConfig() *holderConfig
 }
 
-func New() (*Config, error) {
+type config struct {
+	Node   *nodeConfig   `yaml:"node"`
+	Chain  *chainConfig  `yaml:"chain"`
+	Holder *holderConfig `yaml:"holder"`
+}
+
+type nodeConfig struct {
+	Port      int    `yaml:"port"`
+	Directory string `yaml:"dir"`
+	PeersPath string `yaml:"peers"`
+	Control   struct {
+		Port int `yaml:"port"`
+	} `yaml:"control"`
+}
+
+type chainConfig struct {
+	Database string `yaml:"database"`
+	Genesis  struct {
+		Value float64 `yaml:"value"`
+	} `yaml:"genesis"`
+}
+
+type holderConfig struct {
+	PrivateKeyPath string `yaml:"privateKey"`
+}
+
+func New() (Config, error) {
 	file, err := ioutil.ReadFile("config.yaml")
 	if err != nil {
 		return nil, fmt.Errorf("read file: %w", err)
 	}
 
-	cfg := new(Config)
+	cfg := new(config)
 
 	if err := yaml.Unmarshal(file, cfg); err != nil {
 		return nil, fmt.Errorf("unmarshal config: %w", err)
@@ -48,4 +67,16 @@ func New() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func (c *config) GetNodeConfig() *nodeConfig {
+	return c.Node
+}
+
+func (c *config) GetChainConfig() *chainConfig {
+	return c.Chain
+}
+
+func (c *config) GetHolderConfig() *holderConfig {
+	return c.Holder
 }

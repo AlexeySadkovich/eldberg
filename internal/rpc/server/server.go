@@ -24,9 +24,9 @@ type Server struct {
 	logger *zap.SugaredLogger
 }
 
-func New(config *config.Config, logger *zap.SugaredLogger) *Server {
+func New(config config.Config, logger *zap.SugaredLogger) *Server {
 	rpcServer := grpc.NewServer()
-	port := config.Node.Port
+	port := config.GetNodeConfig().Port
 
 	server := &Server{
 		server: rpcServer,

@@ -2,7 +2,11 @@ node:
   port: 8080
   dir: ".node"
   peers: "peers.json"
-  privateKey: "holder.ecdsa"
-  database: "chain"
   control:
     port: 7070
+chain:
+  database: "chain"
+  genesis:
+    value: 50
+holder:
+  privateKey: "holder.ecdsa"

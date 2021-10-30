@@ -16,8 +16,11 @@ func provideLogger() *zap.SugaredLogger {
 	return logger.Sugar()
 }
 
-func provideDB(config *config.Config) (*leveldb.DB, error) {
-	path := filepath.Join(config.Node.Directory, config.Node.Database)
+func provideDB(config config.Config) (*leveldb.DB, error) {
+	nodeConfig := config.GetNodeConfig()
+	chainConfig := config.GetChainConfig()
+
+	path := filepath.Join(nodeConfig.Directory, chainConfig.Database)
 
 	db, err := leveldb.OpenFile(path, nil)
 	if err != nil {

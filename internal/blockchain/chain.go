@@ -3,6 +3,7 @@ package blockchain
 import (
 	"fmt"
 
+	"github.com/AlexeySadkovich/eldberg/config"
 	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
 	"github.com/AlexeySadkovich/eldberg/internal/holder"
 	"github.com/AlexeySadkovich/eldberg/internal/storage"
@@ -12,27 +13,21 @@ type Chain struct {
 	currentBlock *Block
 	height       int
 	storage      storage.Storage
+	holder       *holder.Holder
 }
 
-func New(storage storage.Storage, holder *holder.Holder) (*Chain, error) {
+func New(storage storage.Storage, holder *holder.Holder, config config.Config) (*Chain, error) {
 	chain := &Chain{
 		storage: storage,
+		holder:  holder,
 	}
 	chain.height = chain.GetHeight()
 
 	// Create genesis block if chain is empty
 	if chain.height == 0 {
-		genesis := NewBlock(holder.Address(), []byte{})
-
-		tx := NewTransaction(
-			holder.Address(),
-			holder.PrivateKey(),
-			holder.Address(),
-			50,
-		)
-
-		if err := genesis.AddTransaction(tx); err != nil {
-			return nil, fmt.Errorf("creating genesis block failed: %w", err)
+		value := config.GetChainConfig().Genesis.Value
+		if err := chain.CreateGenesis(value); err != nil {
+			return nil, fmt.Errorf("create genesis block: %w", err)
 		}
 	}
 
@@ -74,4 +69,21 @@ func (c *Chain) GetLastHash() ([]byte, error) {
 	}
 
 	return hash, nil
+}
+
+func (c *Chain) CreateGenesis(value float64) error {
+	genesis := NewBlock(c.holder.Address(), []byte{})
+
+	tx := NewTransaction(
+		c.holder.Address(),
+		c.holder.PrivateKey(),
+		c.holder.Address(),
+		value,
+	)
+
+	if err := genesis.AddTransaction(tx); err != nil {
+		return fmt.Errorf("add transaction: %w", err)
+	}
+
+	return nil
 }

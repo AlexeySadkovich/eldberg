@@ -22,14 +22,17 @@ type Holder struct {
 	encoder    *base64.Encoding
 }
 
-func New(config *config.Config) (*Holder, error) {
+func New(config config.Config) (*Holder, error) {
+	nodeConfig := config.GetNodeConfig()
+	holderConfig := config.GetHolderConfig()
+
 	holder := new(Holder)
 
 	// Check if private key already exists
 	// and if it doesn't then create new Holder
 	// but if exists then restore Holder from
 	// private key
-	path := filepath.Join(config.Node.Directory, config.Node.PrivateKeyPath)
+	path := filepath.Join(nodeConfig.Directory, holderConfig.PrivateKeyPath)
 	holderPrivateKey, err := utils.ReadHolderPrivateKey(path)
 	if err != nil {
 		return nil, fmt.Errorf("read private key: %w", err)
