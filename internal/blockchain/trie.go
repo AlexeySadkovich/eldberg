@@ -4,21 +4,21 @@ import (
 	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
 )
 
-type MerkleTree struct {
+type MerkleTrie struct {
 	transactions []*Transaction
 	length       int
 }
 
-func NewMerkleTree(transactions []*Transaction) *MerkleTree {
-	return &MerkleTree{transactions, len(transactions)}
+func NewTrie(transactions []*Transaction) *MerkleTrie {
+	return &MerkleTrie{transactions, len(transactions)}
 }
 
-func (mt *MerkleTree) AddTransaction(tx *Transaction) {
+func (mt *MerkleTrie) AddTransaction(tx *Transaction) {
 	mt.transactions = append(mt.transactions, tx)
 	mt.length++
 }
 
-func (mt *MerkleTree) CalculateRoot() []byte {
+func (mt *MerkleTrie) CalculateRoot() []byte {
 	var subTree [][]byte
 
 	if mt.length%2 != 0 {
@@ -45,7 +45,7 @@ func (mt *MerkleTree) CalculateRoot() []byte {
 	return mt.calculate(subTree)
 }
 
-func (mt *MerkleTree) calculate(tree [][]byte) []byte {
+func (mt *MerkleTrie) calculate(tree [][]byte) []byte {
 	var subTree [][]byte
 
 	for i := 0; i < len(tree)-1; i += 2 {

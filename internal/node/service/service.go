@@ -97,6 +97,8 @@ func (n *Node) AcceptTransaction(data []byte) error {
 			return err
 		}
 
+		// TODO: add block mining
+
 		if err := n.network.PushBlock(block); err != nil {
 			err = fmt.Errorf("node.AddTransaction: failed to push block %w", err)
 			n.logger.Debug(err)

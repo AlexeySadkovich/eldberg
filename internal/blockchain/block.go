@@ -6,16 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain/consensus"
 	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
 	"github.com/AlexeySadkovich/eldberg/internal/blockchain/utils"
+	"github.com/AlexeySadkovich/eldberg/internal/consensus/pow"
 )
 
 type Block struct {
 	Header       *Header
 	Transactions []*Transaction
 
-	merkleTree *MerkleTree
+	trie *MerkleTrie
 }
 
 func NewBlock(holderAddr string, prevHash []byte) *Block {
@@ -25,12 +25,12 @@ func NewBlock(holderAddr string, prevHash []byte) *Block {
 		Holder:       holderAddr,
 	}
 
-	merkleTree := NewMerkleTree([]*Transaction{})
+	trie := NewTrie([]*Transaction{})
 
 	return &Block{
 		Header:       header,
 		Transactions: []*Transaction{},
-		merkleTree:   merkleTree,
+		trie:         trie,
 	}
 }
 
@@ -45,8 +45,8 @@ func (b *Block) AddTransaction(tx *Transaction) error {
 
 	b.Transactions = append(b.Transactions, tx)
 
-	b.merkleTree.AddTransaction(tx)
-	b.Header.MerkleRoot = b.merkleTree.CalculateRoot()
+	b.trie.AddTransaction(tx)
+	b.Header.MerkleRoot = b.trie.CalculateRoot()
 
 	return nil
 }
@@ -58,7 +58,7 @@ func (b *Block) IsValid() bool {
 
 	// Check that block were mined correctly
 	blockHash := crypto.Hash(b.Bytes())
-	if !consensus.CheckNonce(blockHash, b.Header.Nonce, b.Header.Difficulty) {
+	if !pow.CheckNonce(blockHash, b.Header.Nonce, b.Header.Difficulty) {
 		return false
 	}
 
