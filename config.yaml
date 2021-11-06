@@ -3,7 +3,10 @@ node:
   dir: ".node"
   peers: "peers.json"
   control:
-    port: 7070
+    - protocol: "ws"
+      port: 7071
+    - protocol: "http"
+      port: 7072
 chain:
   database: "chain"
   genesis:

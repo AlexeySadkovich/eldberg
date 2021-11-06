@@ -3,6 +3,7 @@ module github.com/AlexeySadkovich/eldberg
 go 1.16
 
 require (
+	github.com/gorilla/websocket v1.4.2
 	github.com/syndtr/goleveldb v1.0.0
 	go.uber.org/fx v1.14.0
 	go.uber.org/zap v1.19.0

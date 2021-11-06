@@ -33,7 +33,7 @@ func New(lc fx.Lifecycle, server *server.Server, logger *zap.SugaredLogger) *Net
 			go netw.Run(ctx)
 			return nil
 		},
-		OnStop: func(c context.Context) error {
+		OnStop: func(ctx context.Context) error {
 			netw.Stop()
 			return nil
 		},

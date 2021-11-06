@@ -32,8 +32,9 @@ type nodeConfig struct {
 	Port      int    `yaml:"port"`
 	Directory string `yaml:"dir"`
 	PeersPath string `yaml:"peers"`
-	Control   struct {
-		Port int `yaml:"port"`
+	Control   []struct {
+		Protocol string `yaml:"protocol"`
+		Port     int    `yaml:"port"`
 	} `yaml:"control"`
 }
 

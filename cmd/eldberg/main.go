@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/AlexeySadkovich/eldberg/control"
 	"log"
 	"os"
 	"os/signal"
@@ -30,6 +31,7 @@ func main() {
 		fx.Provide(blockchain.New),
 		fx.Provide(service.New),
 		fx.Provide(controller.New),
+		fx.Provide(control.New),
 
 		fx.Invoke(server.Register),
 	)
@@ -46,12 +48,12 @@ func main() {
 	}()
 
 	if err := app.Start(ctx); err != nil {
-		log.Fatalf("start node: %w", err)
+		log.Fatalf("start node: %s", err)
 	}
 
 	<-app.Done()
 
 	if err := app.Stop(ctx); err != nil {
-		log.Fatal("stop node: %w", err)
+		log.Fatalf("stop node: %s", err)
 	}
 }
