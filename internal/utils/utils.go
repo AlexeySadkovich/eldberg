@@ -8,7 +8,7 @@ import (
 )
 
 func ReadHolderPrivateKey(filename string) (string, error) {
-	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0666)
+	file, err := os.OpenFile(filename, os.O_RDONLY|os.O_CREATE, 0o666)
 	if err != nil {
 		return "", fmt.Errorf("failed to open private key file: %w", err)
 	}
@@ -23,7 +23,7 @@ func ReadHolderPrivateKey(filename string) (string, error) {
 }
 
 func StoreHolderPrivateKey(filename, privateKey string) error {
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0666)
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, 0o666)
 	if err != nil {
 		return fmt.Errorf("failed to open private key file: %w", err)
 	}
@@ -60,7 +60,7 @@ func IsDirectoryExists(dirname string) bool {
 }
 
 func CreateDirectory(dirname string) error {
-	if err := os.Mkdir(dirname, 0777); err != nil {
+	if err := os.Mkdir(dirname, 0o777); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 

@@ -32,10 +32,21 @@ type nodeConfig struct {
 	Port      int    `yaml:"port"`
 	Directory string `yaml:"dir"`
 	PeersPath string `yaml:"peers"`
-	Control   []struct {
+
+	Control []struct {
 		Protocol string `yaml:"protocol"`
 		Port     int    `yaml:"port"`
 	} `yaml:"control"`
+
+	Discover struct {
+		ListeningPort  int `yaml:"listeningPort"`
+		BootstrapNodes []struct {
+			Addr string `yaml:"addr"`
+			Port int    `yaml:"port"`
+		} `yaml:"bootstrapNodes"`
+		UseStun  bool   `yaml:"useStun"`
+		StunAddr string `yaml:"stunAddr"`
+	} `yaml:"discover"`
 }
 
 type chainConfig struct {

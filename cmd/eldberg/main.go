@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/AlexeySadkovich/eldberg/control"
 	"log"
 	"os"
 	"os/signal"
@@ -10,6 +9,7 @@ import (
 	"go.uber.org/fx"
 
 	"github.com/AlexeySadkovich/eldberg/config"
+	"github.com/AlexeySadkovich/eldberg/control"
 	"github.com/AlexeySadkovich/eldberg/internal/blockchain"
 	"github.com/AlexeySadkovich/eldberg/internal/holder"
 	"github.com/AlexeySadkovich/eldberg/internal/network"

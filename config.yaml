@@ -1,15 +1,21 @@
+holder:
+  privateKey: "holder.ecdsa"
 node:
   port: 8080
   dir: ".node"
-  peers: "peers.json"
   control:
     - protocol: "ws"
       port: 7071
     - protocol: "http"
       port: 7072
+  discover:
+    listeningPort: 8081
+    bootstrapNodes:
+      - addr: "127.0.0.1"
+        port: 8082
+    useStun: false
+    stunAddr: ""
 chain:
   database: "chain"
   genesis:
     value: 50.0
-holder:
-  privateKey: "holder.ecdsa"
