@@ -11,7 +11,7 @@ type messageType int
 const (
 	Ping messageType = iota
 	Pong
-	Ask
+	FindNode
 	Nodes
 )
 

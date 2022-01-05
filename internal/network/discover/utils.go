@@ -9,3 +9,10 @@ func IsTemporaryErr(err error) bool {
 
 	return ok && e.Temporary()
 }
+
+func HasBit(b byte, pos uint) bool {
+	pos = 7 - pos
+	val := b & (1 << pos)
+
+	return val > 0
+}
