@@ -4,9 +4,11 @@ import (
 	crand "crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"math"
 	"math/big"
 	"math/rand"
 	"net"
+	"sort"
 	"sync"
 	"time"
 
@@ -29,7 +31,8 @@ const (
 	refreshInterval    = 10 * time.Minute
 	revalidateInterval = 10 * time.Second
 
-	pingMaxTime = 1 * time.Second
+	pingTimeout     = 1 * time.Second
+	responseTimeout = 2 * time.Second
 )
 
 // DHT is distributed hash table used in
@@ -43,6 +46,8 @@ type DHT struct {
 
 	net     *Network
 	storage Storage
+
+	closeCh chan struct{}
 }
 
 const (
@@ -80,12 +85,25 @@ func New(storage Storage, config config.Config, logger *zap.SugaredLogger) (*DHT
 	}
 
 	for i := 0; i < keyBits; i++ {
-		dht.buckets = append(dht.buckets, &bucket{})
+		dht.buckets = append(dht.buckets, &bucket{lastRefresh: time.Now()})
 	}
 
+	go dht.timers()
 	go dht.loop()
 
 	return dht, nil
+}
+
+func (dht *DHT) iterate(target nodeID) {
+	closest := dht.getClosestNodes(alpha, target, nil)
+	if len(closest.entries) == 0 {
+		return
+	}
+
+	bucIdx := dht.getBucketIndex(target, dht.self.id)
+	dht.buckets[bucIdx].resetRefreshTime()
+
+	dht.net.FindNode(closest)
 }
 
 func (dht *DHT) addNode(node *netnode) {
@@ -118,6 +136,54 @@ func (dht *DHT) addNode(node *netnode) {
 	dht.buckets[idx] = buc
 }
 
+func (dht *DHT) getClosestNodes(num int, target nodeID, ignored []*netnode) *nodesByDistance {
+	dht.mutex.Lock()
+	defer dht.mutex.Unlock()
+
+	idx := dht.getBucketIndex(dht.self.id, target)
+	idxList := []int{idx}
+	l := idx - 1
+	r := idx + 1
+
+	for len(idxList) < keyBits {
+		if l >= 0 {
+			idxList = append(idxList, l)
+		}
+		if r < keyBits {
+			idxList = append(idxList, r)
+		}
+	}
+
+	nodes := &nodesByDistance{target: target}
+	toAdd := num
+
+	for toAdd > 0 && len(idxList) > 0 {
+		idx, idxList = idxList[0], idxList[1:]
+
+		for _, n := range dht.buckets[idx].entries {
+			ignore := false
+			for _, v := range ignored {
+				if n.id == v.id {
+					ignore = true
+					break
+				}
+			}
+
+			if !ignore {
+				nodes.appendUnique(n)
+				toAdd--
+				if toAdd == 0 {
+					break
+				}
+			}
+		}
+	}
+
+	sort.Sort(nodes)
+
+	return nodes
+}
+
 func (dht *DHT) makeNodeSeen(id nodeID) {
 	dht.mutex.Lock()
 	defer dht.mutex.Unlock()
@@ -146,32 +212,88 @@ func (dht *DHT) isNodeInBucket(id nodeID, bucket int) bool {
 
 	b := dht.buckets[bucket]
 
-	if b.findNodeIndex(id) != -1 {
-		return true
-	}
-
-	return false
+	return b.findNodeIndex(id) != -1
 }
 
-func (dht *DHT) loop() {
-	revalidate := time.NewTimer(dht.nextRevalidation())
-	defer revalidate.Stop()
+func (dht *DHT) doRefresh() {
+	for i, b := range dht.buckets {
+		if b.expired() {
+			nodeID := dht.getRandomID(i)
+			dht.iterate(nodeID)
+		}
+	}
+}
 
+func (dht *DHT) timers() {
 	refresh := time.NewTicker(refreshInterval)
 	defer refresh.Stop()
 
 	for {
 		select {
-		case <-dht.net.Find():
-			// TODO: answer with closest nodes
+		case <-refresh.C:
+			dht.updateSeed()
+			dht.doRefresh()
+		case <-dht.closeCh:
+			return
+		}
+	}
+}
+
+func (dht *DHT) loop() {
+	for {
+		select {
+		case node := <-dht.net.OnFindNode():
+			closest := dht.getClosestNodes(bucketSize, node.id, nil)
+			dht.net.SendNodes(node, closest.entries)
 		case nodes := <-dht.net.Nodes():
 			for _, n := range nodes {
 				go dht.addNode(n)
 			}
-		case <-refresh.C:
-			dht.updateSeed()
+		case <-dht.closeCh:
+			return
 		}
 	}
+}
+
+func (dht *DHT) getRandomID(bucket int) nodeID {
+	dht.mutex.Lock()
+	defer dht.mutex.Unlock()
+
+	var id []byte
+
+	byteIdx := bucket / 8
+	bitIdx := bucket % 8
+
+	for i := 0; i < byteIdx; i++ {
+		id = append(id, dht.self.id[i])
+	}
+
+	var b byte
+	for i := 0; i < 8; i++ {
+		var bit bool
+		if i < bitIdx {
+			bit = HasBit(dht.self.id[byteIdx], uint(i))
+		} else {
+			bit = rand.Intn(2) == 1
+		}
+
+		if bit {
+			pos := 7 - i
+			b += byte(math.Pow(2, float64(pos)))
+		}
+	}
+
+	id = append(id, b)
+
+	for i := byteIdx + 1; i < len(nodeID{}); i++ {
+		r := byte(rand.Intn(256))
+		id = append(id, r)
+	}
+
+	var nID nodeID
+	copy(nID[:], id)
+
+	return nID
 }
 
 func (dht *DHT) getDistance(id1 nodeID, id2 nodeID) *big.Int {
@@ -197,7 +319,7 @@ func (dht *DHT) getBucketIndex(id1 nodeID, id2 nodeID) int {
 				byteIdx := i * 8
 				bitIdx := j
 
-				return keyBits - (byteIdx * bitIdx) - 1
+				return keyBits - (byteIdx + bitIdx) - 1
 			}
 		}
 	}
@@ -226,8 +348,16 @@ func (dht *DHT) updateSeed() {
 }
 
 type bucket struct {
-	sync.Mutex
-	entries []*netnode
+	entries     []*netnode
+	lastRefresh time.Time
+}
+
+func (b *bucket) expired() bool {
+	return time.Since(b.lastRefresh) > refreshInterval
+}
+
+func (b *bucket) resetRefreshTime() {
+	b.lastRefresh = time.Now()
 }
 
 func (b *bucket) full() bool {

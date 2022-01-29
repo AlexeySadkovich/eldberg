@@ -2,36 +2,45 @@ package discover
 
 import "time"
 
-type awaitedResponse interface {
-	received() chan struct{}
-	timeout() chan struct{}
-}
-
 type response struct {
-	typ messageType
-	rec chan struct{} // response received
-	exp chan struct{} // timeout expired
+	from nodeID
+	typ  messageType
+	rec  chan struct{} // response received
 }
 
-func makeResponse(msgType messageType) *response {
+type awaitedResponse struct {
+	wrapped *response
+	exp     chan struct{} // timeout expired
+}
+
+func makeResponse(from nodeID, msgType messageType) *response {
 	return &response{
-		typ: msgType,
-		rec: make(chan struct{}),
-		exp: make(chan struct{}),
+		from: from,
+		typ:  msgType,
+		rec:  make(chan struct{}),
 	}
 }
 
-func (r *response) await() {
-	timer := time.NewTimer(pingMaxTime)
-	defer timer.Stop()
-
-	select {
-	case <-r.rec:
-		return
-	case <-timer.C:
-		close(r.exp)
-		return
+func (r *response) await(timeout time.Duration) *awaitedResponse {
+	awaited := &awaitedResponse{
+		wrapped: r,
+		exp:     make(chan struct{}),
 	}
+
+	go func() {
+		timer := time.NewTimer(timeout)
+		defer timer.Stop()
+
+		select {
+		case <-awaited.wrapped.rec:
+			return
+		case <-timer.C:
+			close(awaited.exp)
+			return
+		}
+	}()
+
+	return awaited
 }
 
 func (r *response) markReceived() {
@@ -42,6 +51,14 @@ func (r *response) received() chan struct{} {
 	return r.rec
 }
 
-func (r *response) timeout() chan struct{} {
+func (r *awaitedResponse) from() nodeID {
+	return r.wrapped.from
+}
+
+func (r *awaitedResponse) received() chan struct{} {
+	return r.wrapped.rec
+}
+
+func (r *awaitedResponse) timeout() chan struct{} {
 	return r.exp
 }
