@@ -3,7 +3,9 @@ module github.com/AlexeySadkovich/eldberg
 go 1.16
 
 require (
+	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
+	go.uber.org/atomic v1.7.0
 	go.uber.org/fx v1.14.0
 	go.uber.org/zap v1.19.0
 	golang.org/x/tools v0.0.0-20201118003311-bd56c0adb394 // indirect

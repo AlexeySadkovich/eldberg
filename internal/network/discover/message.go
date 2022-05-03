@@ -16,12 +16,36 @@ const (
 )
 
 type message struct {
-	ID   nodeID
+	From *netnode
 	Type messageType
 	Data interface{}
 }
 
+func (m *message) isRequest() bool {
+	switch m.Type {
+	case Ping:
+	case FindNode:
+	default:
+		return false
+	}
+
+	return true
+}
+
+func (m *message) isResponse() bool {
+	switch m.Type {
+	case Pong:
+	case Nodes:
+	default:
+		return false
+	}
+
+	return true
+}
+
 func serializeMessage(msg *message) ([]byte, error) {
+	gob.Register([]*netnode{})
+
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf)
 	err := enc.Encode(msg)

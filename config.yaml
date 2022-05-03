@@ -10,7 +10,7 @@ node:
       port: 7072
   discover:
     listeningPort: 8081
-    bootstrapNodes:
+    bootnodes:
       - addr: "127.0.0.1"
         port: 8082
     useStun: false

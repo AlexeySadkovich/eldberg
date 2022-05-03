@@ -44,7 +44,11 @@ func (r *response) await(timeout time.Duration) *awaitedResponse {
 }
 
 func (r *response) markReceived() {
-	close(r.rec)
+	select {
+	case <-r.rec:
+	default:
+		close(r.rec)
+	}
 }
 
 func (r *response) received() chan struct{} {

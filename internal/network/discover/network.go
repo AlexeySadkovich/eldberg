@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"go.uber.org/atomic"
@@ -12,15 +13,17 @@ import (
 )
 
 type Network struct {
-	mutex   sync.Mutex
-	address *net.UDPAddr
-	conn    *net.UDPConn
+	mutex sync.Mutex
+	self  *netnode
+	conn  *net.UDPConn
 	// pending stores all nodes which from we
 	// are waiting for the response.
 	pending map[nodeID]*response
 	// responding stores all nodes which are waiting
 	// for the response with nodes list from our node.
 	responding map[nodeID]*netnode
+	// unknown stores addresses which may represent not known nodes.
+	unknown map[string]struct{}
 
 	// findCh triggered when some node requests
 	// our nodes list.
@@ -39,28 +42,34 @@ const (
 	maxPacketSize = 1024
 )
 
-func newNetwork(ip string, port int, logger *zap.SugaredLogger) (*Network, error) {
-	addr := &net.UDPAddr{
+func newNetwork(id nodeID, ip string, port int, logger *zap.SugaredLogger) (*Network, error) {
+	self := &netnode{
+		ID:   id,
 		IP:   net.ParseIP(ip),
 		Port: port,
 	}
 
-	conn, err := net.ListenUDP("udp", addr)
+	conn, err := net.ListenUDP("udp", self.addr())
 	if err != nil {
 		return nil, fmt.Errorf("listen UDP: %w", err)
 	}
 
 	n := &Network{
-		address:    addr,
+		self:       self,
 		conn:       conn,
 		pending:    make(map[nodeID]*response),
 		responding: make(map[nodeID]*netnode),
+		unknown:    make(map[string]struct{}),
 		findCh:     make(chan *netnode),
 		nodesCh:    make(chan []*netnode),
 		logger:     logger,
 	}
 
 	return n, nil
+}
+
+func (n *Network) Self() *netnode {
+	return n.self
 }
 
 func (n *Network) shutdown() error {
@@ -81,8 +90,8 @@ func (n *Network) Nodes() chan []*netnode {
 	return n.nodesCh
 }
 
-func (n *Network) SendNodes(node *netnode, nodes []*netnode) {
-	if err := n.sendNodes(node, nodes); err != nil {
+func (n *Network) SendNodes(dst *netnode, nodes []*netnode) {
+	if err := n.sendNodes(dst, nodes); err != nil {
 		n.logger.Debugf("send nodes error: %s", err)
 
 		return
@@ -90,29 +99,53 @@ func (n *Network) SendNodes(node *netnode, nodes []*netnode) {
 
 	// Delete node from responding nodes list if there
 	// was not any error during sending.
-	delete(n.responding, node.id)
+	delete(n.responding, dst.ID)
+}
+
+// BroadcastFindNode performs asking for nodes for all passed nodes and
+// returns list of unavailable nodes.
+func (n *Network) BroadcastFindNode(nodes []*netnode) []nodeID {
+	unavailableNodes := make([]nodeID, 0)
+
+	for _, v := range nodes {
+		// Check if id is unknown for this node to avoid using nil id as key.
+		if bytes.Compare(v.ID.Bytes(), nilNodeID.Bytes()) == 0 {
+			if err := n.sendFindNode(v); err != nil {
+				continue
+			}
+			// Add node to unknown list to await response without knowledge of its id
+			n.addUnknown(v)
+		} else {
+			_, err := n.sendFindNodeAwaited(v)
+			if err != nil {
+				unavailableNodes = append(unavailableNodes, v.ID)
+				continue
+			}
+		}
+	}
+
+	return unavailableNodes
 }
 
 func (n *Network) FindNode(closest *nodesByDistance) (int64, []nodeID) {
 	contacted := make(map[nodeID]struct{})
-	nothingCloser := false
 
 	unavailableNodes := make([]nodeID, 0)
 	responses := make([]*awaitedResponse, 0, len(closest.entries))
 
 	for i, node := range closest.entries {
-		if i > alpha && !nothingCloser {
+		if i > alpha {
 			break
 		}
 
-		if _, ok := contacted[node.id]; ok {
+		if _, ok := contacted[node.ID]; ok {
 			continue
 		}
-		contacted[node.id] = struct{}{}
+		contacted[node.ID] = struct{}{}
 
-		resp, err := n.sendFindNode(node)
+		resp, err := n.sendFindNodeAwaited(node)
 		if err != nil {
-			unavailableNodes = append(unavailableNodes, node.id)
+			unavailableNodes = append(unavailableNodes, node.ID)
 			continue
 		}
 
@@ -131,7 +164,7 @@ func (n *Network) FindNode(closest *nodesByDistance) (int64, []nodeID) {
 			case <-r.received():
 				addedTotal.Inc()
 			case <-r.timeout():
-				// Node responding for too long, add it to unavailable
+				// Node is responding for too long, add it to list of unavailable nodes.
 				unavailableNodes = append(unavailableNodes, r.from())
 			}
 		}(r, &wg)
@@ -141,10 +174,6 @@ func (n *Network) FindNode(closest *nodesByDistance) (int64, []nodeID) {
 
 	for _, v := range unavailableNodes {
 		closest.remove(v)
-	}
-
-	if !nothingCloser && len(unavailableNodes) == 0 {
-		return 0, nil
 	}
 
 	return addedTotal.Load(), unavailableNodes
@@ -164,36 +193,51 @@ func (n *Network) IsNodeAvailable(node *netnode) bool {
 	}
 }
 
-// sendFindNode sends message to the peer node and starts pending response
+// sendFindNodeAwaited sends FindNode message to the peer node and starts pending response
 // with list of nodes.
-func (n *Network) sendFindNode(node *netnode) (*awaitedResponse, error) {
+func (n *Network) sendFindNodeAwaited(dst *netnode) (*awaitedResponse, error) {
 	msg := &message{
-		ID:   node.id,
+		From: n.self,
 		Type: FindNode,
 		Data: nil,
 	}
 
-	if err := n.send(node, msg); err != nil {
+	if err := n.send(dst, msg); err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
 
 	// Start pending for the response with node list
-	resp := makeResponse(node.id, Nodes)
-	n.addPending(node.id, resp)
+	resp := makeResponse(dst.ID, Nodes)
+	n.addPending(dst.ID, resp)
 	awaited := resp.await(responseTimeout)
 
 	return awaited, nil
 }
 
-// sendNodes sends message with nodes list to the peer node.
-func (n *Network) sendNodes(node *netnode, nodes []*netnode) error {
+// sendFindNode sends FindNode message to the peer node and doesn't start pending for the response.
+func (n *Network) sendFindNode(dst *netnode) error {
 	msg := &message{
-		ID:   node.id,
+		From: n.self,
+		Type: FindNode,
+		Data: nil,
+	}
+
+	if err := n.send(dst, msg); err != nil {
+		return fmt.Errorf("send: %w", err)
+	}
+
+	return nil
+}
+
+// sendNodes sends message with nodes list to the peer node.
+func (n *Network) sendNodes(dst *netnode, nodes []*netnode) error {
+	msg := &message{
+		From: n.self,
 		Type: Nodes,
 		Data: nodes,
 	}
 
-	if err := n.send(node, msg); err != nil {
+	if err := n.send(dst, msg); err != nil {
 		return fmt.Errorf("send: %w", err)
 	}
 
@@ -202,42 +246,43 @@ func (n *Network) sendNodes(node *netnode, nodes []*netnode) error {
 
 // sendPing sends message to the peer node and starts pending response
 // with Pong message. Returns awaited response, which can be used to check response state.
-func (n *Network) sendPing(node *netnode) (*awaitedResponse, error) {
+func (n *Network) sendPing(dst *netnode) (*awaitedResponse, error) {
 	msg := &message{
-		ID:   node.id,
+		From: n.self,
 		Type: Ping,
 		Data: nil,
 	}
 
-	if err := n.send(node, msg); err != nil {
+	if err := n.send(dst, msg); err != nil {
 		return nil, fmt.Errorf("send: %w", err)
 	}
 
 	// Start pending for the response with pong message
-	resp := makeResponse(node.id, Pong)
-	n.addPending(node.id, resp)
+	resp := makeResponse(dst.ID, Pong)
+	n.addPending(dst.ID, resp)
 	awaited := resp.await(pingTimeout)
 
 	return awaited, nil
 }
 
 // sendPong sends Pong message to the node which pinged us.
-func (n *Network) sendPong(node *netnode) error {
+func (n *Network) sendPong(dst *netnode) error {
 	msg := &message{
-		ID:   node.id,
+		From: n.self,
 		Type: Pong,
 		Data: nil,
 	}
 
-	if err := n.send(node, msg); err != nil {
+	if err := n.send(dst, msg); err != nil {
 		return fmt.Errorf("send: %w", err)
 	}
 
 	return nil
 }
 
-func (n *Network) send(node *netnode, msg *message) error {
-	addr := node.addr()
+func (n *Network) send(dst *netnode, msg *message) error {
+	addr := dst.addr()
+
 	conn, err := net.Dial(addr.Network(), addr.String())
 	if err != nil {
 		return fmt.Errorf("dial: %w", err)
@@ -256,11 +301,11 @@ func (n *Network) send(node *netnode, msg *message) error {
 	return nil
 }
 
-// read waits for incoming UDP packets.
-func (n *Network) read() {
+// listen waits for incoming UDP packets.
+func (n *Network) listen() {
 	buf := make([]byte, maxPacketSize)
 	for {
-		_, from, err := n.conn.ReadFromUDP(buf)
+		_, _, err := n.conn.ReadFromUDP(buf)
 		if IsTemporaryErr(err) {
 			n.logger.Debugf("read from UDP temp error: %s", err)
 		} else if err != nil {
@@ -268,47 +313,50 @@ func (n *Network) read() {
 				n.logger.Errorf("read from UDP: %s", err)
 			}
 
-			return
+			continue
 		}
 
-		if err := n.handleMessage(from, buf); err != nil {
-			n.logger.Debugf("handle message failed: %s", err)
-		}
+		go n.handleMessage(buf)
 	}
 }
 
 // handleMessage handles all incoming messages and decides
 // which way this message should be processed.
-func (n *Network) handleMessage(from *net.UDPAddr, data []byte) error {
+func (n *Network) handleMessage(data []byte) {
 	msg, err := deserializeMessage(data)
 	if err != nil {
-		return fmt.Errorf("deserialize message: %w", err)
+		err = fmt.Errorf("deserialize message: %w", err)
+		n.logger.Debugf("handle message failed: %s", err)
 	}
 
-	node := &netnode{
-		id:   msg.ID,
-		ip:   from.IP,
-		port: from.Port,
+	unknown := n.isUnknown(msg.From)
+	if unknown {
+		switch {
+		case msg.isRequest():
+			n.handleRequest(msg.From, msg)
+		case msg.isResponse():
+			n.handleResponse(msg.From, msg)
+		}
+
+		return
 	}
 
 	n.mutex.Lock()
 	defer n.mutex.Unlock()
 
-	resp, ok := n.pending[msg.ID]
+	resp, ok := n.pending[msg.From.ID]
 	if !ok {
-		n.handleRequest(node, msg)
+		n.handleRequest(msg.From, msg)
 
-		return nil
+		return
 	}
 	resp.markReceived()
 
 	if resp.typ == msg.Type {
-		n.handleResponse(node, msg)
+		n.handleResponse(msg.From, msg)
 	} else {
-		n.handleRequest(node, msg)
+		n.handleRequest(msg.From, msg)
 	}
-
-	return nil
 }
 
 // handleResponse processes message from other node as response
@@ -329,7 +377,7 @@ func (n *Network) handleResponse(node *netnode, msg *message) {
 	default:
 	}
 
-	n.removePending(node.id)
+	n.removePending(node.ID)
 }
 
 // handleRequest processes message from other node as request
@@ -339,11 +387,37 @@ func (n *Network) handleRequest(node *netnode, msg *message) {
 	case Ping:
 		if err := n.sendPong(node); err != nil {
 			n.logger.Debugf("send pong message: %s", err)
+
+			return
 		}
 	case FindNode:
 		n.findCh <- node
-		n.responding[node.id] = node
+		n.responding[node.ID] = node
 	}
+}
+
+func (n *Network) addUnknown(node *netnode) {
+	k := node.addr().String()
+	n.mutex.Lock()
+	n.unknown[k] = struct{}{}
+	n.mutex.Unlock()
+}
+
+func (n *Network) isUnknown(node *netnode) bool {
+	n.mutex.Lock()
+	defer n.mutex.Unlock()
+
+	k := node.addr().String()
+	_, ok := n.unknown[k]
+
+	return ok
+}
+
+func (n *Network) removeUnknown(node *netnode) {
+	k := node.addr().String()
+	n.mutex.Lock()
+	delete(n.unknown, k)
+	n.mutex.Unlock()
 }
 
 func (n *Network) addPending(id nodeID, resp *response) {
