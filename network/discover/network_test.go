@@ -58,6 +58,7 @@ func TestNetwork_SendNodes(t *testing.T) {
 	require.NoError(t, err)
 	awaited := resp.await(responseTimeout)
 
+	<-n1.OnFindNode()
 	n1.SendNodes(n2.Self(), expNodes)
 
 	select {
@@ -67,7 +68,7 @@ func TestNetwork_SendNodes(t *testing.T) {
 		require.Equal(t, expNodes, nodes)
 	case <-awaited.timeout():
 		require.Fail(t, "response time out")
-	case <-time.After(2 * time.Second):
+	case <-time.After(3 * time.Second):
 		require.Fail(t, "wait time out")
 	}
 }
