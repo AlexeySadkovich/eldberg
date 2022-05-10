@@ -1,12 +1,11 @@
 package pow
 
 import (
+	"github.com/AlexeySadkovich/eldberg/blockchain/crypto"
+	"github.com/AlexeySadkovich/eldberg/consensus"
 	"math"
 	"math/big"
 	"math/rand"
-
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
-	"github.com/AlexeySadkovich/eldberg/internal/consensus"
 )
 
 type pow struct {

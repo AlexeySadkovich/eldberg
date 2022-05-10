@@ -4,16 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/AlexeySadkovich/eldberg/rpc"
+	pb2 "github.com/AlexeySadkovich/eldberg/rpc/pb"
 
 	"google.golang.org/grpc"
 
 	"github.com/AlexeySadkovich/eldberg/config"
-	"github.com/AlexeySadkovich/eldberg/internal/rpc"
-	"github.com/AlexeySadkovich/eldberg/internal/rpc/pb"
 )
 
 type NodeClient struct {
-	client pb.NodeServiceClient
+	client pb2.NodeServiceClient
 }
 
 var ErrUnknownAnswer = errors.New("unknown answer")
@@ -24,7 +24,7 @@ func NewClient(addr string) (rpc.Service, error) {
 		return nil, fmt.Errorf("listen: %w", err)
 	}
 
-	client := pb.NewNodeServiceClient(conn)
+	client := pb2.NewNodeServiceClient(conn)
 
 	return &NodeClient{client: client}, nil
 }
@@ -33,7 +33,7 @@ func (n *NodeClient) Ping() error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
 	defer cancel()
 
-	msg, err := n.client.Ping(ctx, &pb.PingRequest{})
+	msg, err := n.client.Ping(ctx, &pb2.PingRequest{})
 	if err != nil {
 		return err
 	}
@@ -49,7 +49,7 @@ func (n *NodeClient) ConnectPeer(address, url string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
 	defer cancel()
 
-	req := &pb.PeerRequest{
+	req := &pb2.PeerRequest{
 		Address: address,
 		Url:     url,
 	}
@@ -69,7 +69,7 @@ func (n *NodeClient) DisconnectPeer(address string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
 	defer cancel()
 
-	req := &pb.PeerRequest{
+	req := &pb2.PeerRequest{
 		Address: address,
 	}
 	msg, err := n.client.DisconnectPeer(ctx, req)
@@ -88,7 +88,7 @@ func (n *NodeClient) AcceptTransaction(data []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
 	defer cancel()
 
-	req := &pb.TxRequest{
+	req := &pb2.TxRequest{
 		Data: data,
 	}
 	msg, err := n.client.AcceptTransaction(ctx, req)
@@ -107,7 +107,7 @@ func (n *NodeClient) AcceptBlock(data []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), config.CtxTimeout)
 	defer cancel()
 
-	req := &pb.BlockRequest{
+	req := &pb2.BlockRequest{
 		Data: data,
 	}
 	msg, err := n.client.AcceptBlock(ctx, req)

@@ -6,10 +6,9 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
-
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain/utils"
-	"github.com/AlexeySadkovich/eldberg/internal/holder"
+	"github.com/AlexeySadkovich/eldberg/blockchain/crypto"
+	"github.com/AlexeySadkovich/eldberg/blockchain/utils"
+	"github.com/AlexeySadkovich/eldberg/holder"
 )
 
 type Transaction struct {

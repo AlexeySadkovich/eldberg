@@ -3,14 +3,14 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/AlexeySadkovich/eldberg/rpc/pb"
+	"github.com/AlexeySadkovich/eldberg/rpc/server/controller"
 	"net"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
 	"github.com/AlexeySadkovich/eldberg/config"
-	"github.com/AlexeySadkovich/eldberg/internal/rpc/pb"
-	"github.com/AlexeySadkovich/eldberg/internal/rpc/server/controller"
 )
 
 func Register(s *Server, nsController *controller.NodeServiceController) {

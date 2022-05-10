@@ -7,10 +7,10 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"fmt"
+	"github.com/AlexeySadkovich/eldberg/utils"
 	"path/filepath"
 
 	"github.com/AlexeySadkovich/eldberg/config"
-	"github.com/AlexeySadkovich/eldberg/internal/utils"
 )
 
 /*

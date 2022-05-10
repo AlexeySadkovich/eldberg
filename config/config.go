@@ -2,12 +2,11 @@ package config
 
 import (
 	"fmt"
+	"github.com/AlexeySadkovich/eldberg/utils"
 	"io/ioutil"
 	"time"
 
 	"gopkg.in/yaml.v2"
-
-	"github.com/AlexeySadkovich/eldberg/internal/utils"
 )
 
 const (

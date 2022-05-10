@@ -5,10 +5,9 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
-
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain/utils"
-	"github.com/AlexeySadkovich/eldberg/internal/consensus/pow"
+	"github.com/AlexeySadkovich/eldberg/blockchain/crypto"
+	"github.com/AlexeySadkovich/eldberg/blockchain/utils"
+	"github.com/AlexeySadkovich/eldberg/consensus/pow"
 )
 
 type Block struct {

@@ -1,6 +1,8 @@
 package rpc
 
-import "github.com/AlexeySadkovich/eldberg/internal/node"
+import (
+	"github.com/AlexeySadkovich/eldberg/node"
+)
 
 type Service interface {
 	node.Service

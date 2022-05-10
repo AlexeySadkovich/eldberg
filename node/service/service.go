@@ -2,38 +2,38 @@ package service
 
 import (
 	"fmt"
+	blockchain2 "github.com/AlexeySadkovich/eldberg/blockchain"
+	"github.com/AlexeySadkovich/eldberg/holder"
+	"github.com/AlexeySadkovich/eldberg/network"
+	node2 "github.com/AlexeySadkovich/eldberg/node"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
 	"github.com/AlexeySadkovich/eldberg/config"
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain"
-	"github.com/AlexeySadkovich/eldberg/internal/holder"
-	"github.com/AlexeySadkovich/eldberg/internal/network"
-	"github.com/AlexeySadkovich/eldberg/internal/node"
 )
 
 type Node struct {
 	holder  *holder.Holder
 	network *network.Network
-	chain   *blockchain.Chain
+	chain   *blockchain2.Chain
 
 	logger *zap.SugaredLogger
 }
 
-var _ node.Service = (*Node)(nil)
+var _ node2.Service = (*Node)(nil)
 
 type NodeParams struct {
 	fx.In
 
 	Holder  *holder.Holder
 	Network *network.Network
-	Chain   *blockchain.Chain
+	Chain   *blockchain2.Chain
 
 	Logger *zap.SugaredLogger
 }
 
-func New(p NodeParams) node.Service {
+func New(p NodeParams) node2.Service {
 	return &Node{
 		holder:  p.Holder,
 		network: p.Network,
@@ -57,7 +57,7 @@ func (n *Node) DisconnectPeer(address string) error {
 }
 
 func (n *Node) AcceptTransaction(data []byte) error {
-	tx := blockchain.EmptyTransaction()
+	tx := blockchain2.EmptyTransaction()
 
 	if err := tx.Deserialize(data); err != nil {
 		err = fmt.Errorf("node.AcceptTransaction: failed to deserialize transaction: %w", err)
@@ -66,7 +66,7 @@ func (n *Node) AcceptTransaction(data []byte) error {
 	}
 
 	if !tx.IsValid() {
-		err := fmt.Errorf("node.AcceptTransaction: %w", node.ErrInvalidTx)
+		err := fmt.Errorf("node.AcceptTransaction: %w", node2.ErrInvalidTx)
 		n.logger.Debug(err)
 		return err
 	}
@@ -79,7 +79,7 @@ func (n *Node) AcceptTransaction(data []byte) error {
 	}
 
 	if n.chain.GetCurrentBlock() == nil {
-		block := blockchain.NewBlock(n.holder.Address(), lastHash)
+		block := blockchain2.NewBlock(n.holder.Address(), lastHash)
 		n.chain.SetCurrentBlock(block)
 	}
 
@@ -110,7 +110,7 @@ func (n *Node) AcceptTransaction(data []byte) error {
 }
 
 func (n *Node) AcceptBlock(data []byte) error {
-	block := blockchain.EmptyBlock()
+	block := blockchain2.EmptyBlock()
 
 	if err := block.Deserialize(data); err != nil {
 		err = fmt.Errorf("node.AcceptBlock: failed to deserialize block: %w", err)
@@ -119,7 +119,7 @@ func (n *Node) AcceptBlock(data []byte) error {
 	}
 
 	if !block.IsValid() {
-		err := fmt.Errorf("node.AcceptBlock: %w", node.ErrInvalidBlock)
+		err := fmt.Errorf("node.AcceptBlock: %w", node2.ErrInvalidBlock)
 		n.logger.Debug(err)
 		return err
 	}

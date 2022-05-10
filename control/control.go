@@ -2,12 +2,12 @@ package control
 
 import (
 	"context"
+	"github.com/AlexeySadkovich/eldberg/node"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
 	"github.com/AlexeySadkovich/eldberg/config"
-	"github.com/AlexeySadkovich/eldberg/internal/node"
 )
 
 type Control struct {

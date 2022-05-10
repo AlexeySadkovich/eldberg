@@ -2,11 +2,11 @@ package blockchain
 
 import (
 	"fmt"
+	"github.com/AlexeySadkovich/eldberg/blockchain/crypto"
+	"github.com/AlexeySadkovich/eldberg/holder"
+	"github.com/AlexeySadkovich/eldberg/storage"
 
 	"github.com/AlexeySadkovich/eldberg/config"
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
-	"github.com/AlexeySadkovich/eldberg/internal/holder"
-	"github.com/AlexeySadkovich/eldberg/internal/storage"
 )
 
 type Chain struct {

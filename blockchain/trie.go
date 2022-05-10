@@ -1,7 +1,7 @@
 package blockchain
 
 import (
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain/crypto"
+	"github.com/AlexeySadkovich/eldberg/blockchain/crypto"
 )
 
 type MerkleTrie struct {

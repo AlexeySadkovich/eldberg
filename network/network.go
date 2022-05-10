@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/AlexeySadkovich/eldberg/node"
+	"github.com/AlexeySadkovich/eldberg/rpc/server"
 	"sync"
 
 	"go.uber.org/fx"
 	"go.uber.org/zap"
-
-	"github.com/AlexeySadkovich/eldberg/internal/node"
-	"github.com/AlexeySadkovich/eldberg/internal/rpc/server"
 )
 
 type Network struct {

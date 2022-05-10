@@ -2,9 +2,8 @@ package network
 
 import (
 	"fmt"
-
-	"github.com/AlexeySadkovich/eldberg/internal/rpc"
-	"github.com/AlexeySadkovich/eldberg/internal/rpc/client"
+	"github.com/AlexeySadkovich/eldberg/rpc"
+	"github.com/AlexeySadkovich/eldberg/rpc/client"
 )
 
 type Peer struct {

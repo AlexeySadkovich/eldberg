@@ -2,6 +2,13 @@ package main
 
 import (
 	"context"
+	"github.com/AlexeySadkovich/eldberg/blockchain"
+	"github.com/AlexeySadkovich/eldberg/holder"
+	"github.com/AlexeySadkovich/eldberg/network"
+	"github.com/AlexeySadkovich/eldberg/node/service"
+	"github.com/AlexeySadkovich/eldberg/rpc/server"
+	"github.com/AlexeySadkovich/eldberg/rpc/server/controller"
+	"github.com/AlexeySadkovich/eldberg/storage"
 	"log"
 	"os"
 	"os/signal"
@@ -10,13 +17,6 @@ import (
 
 	"github.com/AlexeySadkovich/eldberg/config"
 	"github.com/AlexeySadkovich/eldberg/control"
-	"github.com/AlexeySadkovich/eldberg/internal/blockchain"
-	"github.com/AlexeySadkovich/eldberg/internal/holder"
-	"github.com/AlexeySadkovich/eldberg/internal/network"
-	"github.com/AlexeySadkovich/eldberg/internal/node/service"
-	"github.com/AlexeySadkovich/eldberg/internal/rpc/server"
-	"github.com/AlexeySadkovich/eldberg/internal/rpc/server/controller"
-	"github.com/AlexeySadkovich/eldberg/internal/storage"
 )
 
 func main() {
