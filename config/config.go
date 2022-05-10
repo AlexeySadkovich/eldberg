@@ -17,18 +17,18 @@ const (
 )
 
 type Config interface {
-	GetNodeConfig() *nodeConfig
-	GetChainConfig() *chainConfig
-	GetHolderConfig() *holderConfig
+	GetNodeConfig() *NodeConfig
+	GetChainConfig() *ChainConfig
+	GetHolderConfig() *HolderConfig
 }
 
 type config struct {
-	Node   *nodeConfig   `yaml:"node"`
-	Chain  *chainConfig  `yaml:"chain"`
-	Holder *holderConfig `yaml:"holder"`
+	Node   *NodeConfig   `yaml:"node"`
+	Chain  *ChainConfig  `yaml:"chain"`
+	Holder *HolderConfig `yaml:"holder"`
 }
 
-type nodeConfig struct {
+type NodeConfig struct {
 	Port      int    `yaml:"port"`
 	Directory string `yaml:"dir"`
 	PeersPath string `yaml:"peers"`
@@ -39,25 +39,28 @@ type nodeConfig struct {
 	} `yaml:"control"`
 
 	Discover struct {
-		ListeningPort  int `yaml:"listeningPort"`
-		BootstrapNodes []struct {
-			Addr string `yaml:"addr"`
-			Port int    `yaml:"port"`
-		} `yaml:"bootstrapNodes"`
-		UseStun  bool   `yaml:"useStun"`
-		StunAddr string `yaml:"stunAddr"`
+		Address        string `yaml:"address"`
+		ListeningPort  int    `yaml:"listeningPort"`
+		BootstrapNodes []Node `yaml:"bootnodes"`
+		UseStun        bool   `yaml:"useStun"`
+		StunAddr       string `yaml:"stunAddr"`
 	} `yaml:"discover"`
 }
 
-type chainConfig struct {
+type ChainConfig struct {
 	Database string `yaml:"database"`
 	Genesis  struct {
 		Value float64 `yaml:"value"`
 	} `yaml:"genesis"`
 }
 
-type holderConfig struct {
+type HolderConfig struct {
 	PrivateKeyPath string `yaml:"privateKey"`
+}
+
+type Node struct {
+	Addr string `yaml:"addr"`
+	Port int    `yaml:"port"`
 }
 
 func New() (Config, error) {
@@ -81,14 +84,14 @@ func New() (Config, error) {
 	return cfg, nil
 }
 
-func (c *config) GetNodeConfig() *nodeConfig {
+func (c *config) GetNodeConfig() *NodeConfig {
 	return c.Node
 }
 
-func (c *config) GetChainConfig() *chainConfig {
+func (c *config) GetChainConfig() *ChainConfig {
 	return c.Chain
 }
 
-func (c *config) GetHolderConfig() *holderConfig {
+func (c *config) GetHolderConfig() *HolderConfig {
 	return c.Holder
 }

@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"bytes"
 	crand "crypto/rand"
 	"encoding/binary"
 	"fmt"
@@ -17,12 +18,6 @@ import (
 	"github.com/AlexeySadkovich/eldberg/config"
 )
 
-type Storage interface {
-	Save(key, data []byte) error
-	Get(key []byte) (data []byte, err error)
-	Delete(key []byte)
-}
-
 const (
 	alpha      = 3 // Concurrency
 	keyBits    = 160
@@ -38,60 +33,106 @@ const (
 // DHT is distributed hash table used in
 // Kademlia protocol implementation
 type DHT struct {
-	mutex   sync.Mutex
-	self    *netnode
-	buckets []*bucket
+	mutex     sync.Mutex
+	address   string
+	port      int
+	selfID    nodeID
+	buckets   []*bucket
+	bootnodes []*netnode
+	net       *Network
+	rand      *rand.Rand
+	closeCh   chan struct{}
 
-	rand *rand.Rand
-
-	net     *Network
-	storage Storage
-
-	closeCh chan struct{}
+	logger *zap.SugaredLogger
 }
 
-const (
-	localAddr = "127.0.0.1"
-)
-
-func New(storage Storage, config config.Config, logger *zap.SugaredLogger) (*DHT, error) {
+func New(config config.Config, logger *zap.SugaredLogger) *DHT {
 	nodeConfig := config.GetNodeConfig()
 	port := nodeConfig.Discover.ListeningPort
-
-	netw, err := newNetwork(localAddr, port, logger)
-	if err != nil {
-		return nil, fmt.Errorf("create network: %w", err)
-	}
-
-	selfID, err := newID()
-	if err != nil {
-		return nil, fmt.Errorf("create self id: %w", err)
-	}
-
-	self := &netnode{
-		id:   selfID,
-		ip:   net.ParseIP(localAddr),
-		port: port,
-	}
+	addr := nodeConfig.Discover.Address
+	bootnodes := nodeConfig.Discover.BootstrapNodes
 
 	randSrc := rand.NewSource(time.Now().UnixNano())
 
 	dht := &DHT{
-		self:    self,
-		buckets: nil,
-		rand:    rand.New(randSrc),
-		net:     netw,
-		storage: storage,
+		address:   addr,
+		port:      port,
+		selfID:    newID(),
+		buckets:   make([]*bucket, 0, keyBits),
+		bootnodes: make([]*netnode, 0, len(bootnodes)),
+		rand:      rand.New(randSrc),
+		net:       nil,
+		closeCh:   make(chan struct{}),
+		logger:    logger,
 	}
 
 	for i := 0; i < keyBits; i++ {
 		dht.buckets = append(dht.buckets, &bucket{lastRefresh: time.Now()})
 	}
 
+	for _, v := range bootnodes {
+		n := &netnode{
+			IP:   net.ParseIP(v.Addr),
+			Port: v.Port,
+		}
+		dht.bootnodes = append(dht.bootnodes, n)
+	}
+
+	return dht
+}
+
+func (dht *DHT) Listen() error {
+	n, err := newNetwork(dht.selfID, dht.address, dht.port, dht.logger)
+	if err != nil {
+		return fmt.Errorf("create network: %w", err)
+	}
+	go n.listen()
+
+	dht.net = n
+
 	go dht.timers()
 	go dht.loop()
 
-	return dht, nil
+	return nil
+}
+
+func (dht *DHT) Bootstrap() error {
+	if len(dht.bootnodes) == 0 {
+		return nil
+	}
+
+	for _, v := range dht.bootnodes {
+		// Check if node id is unknown.
+		if bytes.Compare(v.ID.Bytes(), nilNodeID.Bytes()) == 0 {
+			id, ok := dht.net.ping(v)
+			if !ok {
+				continue
+			}
+			v.ID = id
+
+			dht.addNode(v)
+		} else {
+			dht.addNode(v)
+		}
+	}
+
+	if dht.NodesAmount() > 0 {
+		dht.iterate(dht.selfID)
+	}
+
+	return nil
+}
+
+func (dht *DHT) NodesAmount() int {
+	dht.mutex.Lock()
+	defer dht.mutex.Unlock()
+
+	total := 0
+	for _, b := range dht.buckets {
+		total += b.len()
+	}
+
+	return total
 }
 
 func (dht *DHT) iterate(target nodeID) {
@@ -100,30 +141,29 @@ func (dht *DHT) iterate(target nodeID) {
 		return
 	}
 
-	bucIdx := dht.getBucketIndex(target, dht.self.id)
+	bucIdx := dht.getBucketIndex(target, dht.selfID)
 	dht.buckets[bucIdx].resetRefreshTime()
 
 	dht.net.FindNode(closest)
 }
 
 func (dht *DHT) addNode(node *netnode) {
-	idx := dht.getBucketIndex(dht.self.id, node.id)
+	idx := dht.getBucketIndex(dht.selfID, node.ID)
 
-	if dht.isNodeInBucket(node.id, idx) {
-		dht.makeNodeSeen(node.id)
+	if dht.isNodeInBucket(node.ID, idx) {
+		dht.makeNodeSeen(node.ID)
 
 		return
 	}
 
 	dht.mutex.Lock()
 	defer dht.mutex.Unlock()
-
 	buc := dht.buckets[idx]
 
 	if buc.full() {
 		// Check if first node in bucket available. if not -
 		// we may remove it.
-		if !dht.net.IsNodeAvailable(buc.entries[0]) {
+		if _, ok := dht.net.ping(buc.entries[0]); !ok {
 			buc.removeNodeByIndex(0)
 			buc.appendNode(node)
 		} else {
@@ -140,7 +180,7 @@ func (dht *DHT) getClosestNodes(num int, target nodeID, ignored []*netnode) *nod
 	dht.mutex.Lock()
 	defer dht.mutex.Unlock()
 
-	idx := dht.getBucketIndex(dht.self.id, target)
+	idx := dht.getBucketIndex(dht.selfID, target)
 	idxList := []int{idx}
 	l := idx - 1
 	r := idx + 1
@@ -152,6 +192,8 @@ func (dht *DHT) getClosestNodes(num int, target nodeID, ignored []*netnode) *nod
 		if r < keyBits {
 			idxList = append(idxList, r)
 		}
+		l--
+		r++
 	}
 
 	nodes := &nodesByDistance{target: target}
@@ -163,7 +205,7 @@ func (dht *DHT) getClosestNodes(num int, target nodeID, ignored []*netnode) *nod
 		for _, n := range dht.buckets[idx].entries {
 			ignore := false
 			for _, v := range ignored {
-				if n.id == v.id {
+				if n.ID == v.ID {
 					ignore = true
 					break
 				}
@@ -188,7 +230,7 @@ func (dht *DHT) makeNodeSeen(id nodeID) {
 	dht.mutex.Lock()
 	defer dht.mutex.Unlock()
 
-	idx := dht.getBucketIndex(dht.self.id, id)
+	idx := dht.getBucketIndex(dht.selfID, id)
 
 	buc := dht.buckets[idx]
 	nodeIdx := buc.findNodeIndex(id)
@@ -200,7 +242,7 @@ func (dht *DHT) makeNodeSeen(id nodeID) {
 	node := buc.entries[nodeIdx]
 
 	// Move node to the tail of bucket
-	buc.removeNodeByID(node.id)
+	buc.removeNodeByID(node.ID)
 	buc.appendNode(node)
 
 	dht.buckets[idx] = buc
@@ -242,12 +284,13 @@ func (dht *DHT) timers() {
 func (dht *DHT) loop() {
 	for {
 		select {
-		case node := <-dht.net.OnFindNode():
-			closest := dht.getClosestNodes(bucketSize, node.id, nil)
-			dht.net.SendNodes(node, closest.entries)
+		case from := <-dht.net.OnFindNode():
+			dht.addNode(from)
+			closest := dht.getClosestNodes(bucketSize, from.ID, []*netnode{from})
+			dht.net.SendNodes(from, closest.entries)
 		case nodes := <-dht.net.Nodes():
 			for _, n := range nodes {
-				go dht.addNode(n)
+				dht.addNode(n)
 			}
 		case <-dht.closeCh:
 			return
@@ -265,14 +308,14 @@ func (dht *DHT) getRandomID(bucket int) nodeID {
 	bitIdx := bucket % 8
 
 	for i := 0; i < byteIdx; i++ {
-		id = append(id, dht.self.id[i])
+		id = append(id, dht.selfID[i])
 	}
 
 	var b byte
 	for i := 0; i < 8; i++ {
 		var bit bool
 		if i < bitIdx {
-			bit = HasBit(dht.self.id[byteIdx], uint(i))
+			bit = HasBit(dht.selfID[byteIdx], uint(i))
 		} else {
 			bit = rand.Intn(2) == 1
 		}
@@ -352,6 +395,10 @@ type bucket struct {
 	lastRefresh time.Time
 }
 
+func (b *bucket) len() int {
+	return len(b.entries)
+}
+
 func (b *bucket) expired() bool {
 	return time.Since(b.lastRefresh) > refreshInterval
 }
@@ -366,7 +413,7 @@ func (b *bucket) full() bool {
 
 func (b *bucket) findNodeIndex(id nodeID) int {
 	for i, v := range b.entries {
-		if v.id == id {
+		if v.ID == id {
 			return i
 		}
 	}

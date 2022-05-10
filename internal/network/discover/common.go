@@ -11,16 +11,18 @@ type (
 	// netnode stores information about
 	// network node
 	netnode struct {
-		id   nodeID
-		ip   net.IP
-		port int
+		ID   nodeID
+		IP   net.IP
+		Port int
 	}
 
 	nodeID [32]byte
 )
 
+var nilNodeID nodeID
+
 func (n *netnode) addr() *net.UDPAddr {
-	return &net.UDPAddr{IP: n.ip, Port: n.port}
+	return &net.UDPAddr{IP: n.IP, Port: n.Port}
 }
 
 func (id nodeID) Bytes() []byte {
@@ -42,7 +44,7 @@ func (n *nodesByDistance) appendUnique(nodes ...*netnode) {
 	for _, v := range nodes {
 		exists := false
 		for _, vv := range n.entries {
-			if v.id == vv.id {
+			if v.ID == vv.ID {
 				exists = true
 				break
 			}
@@ -55,7 +57,7 @@ func (n *nodesByDistance) appendUnique(nodes ...*netnode) {
 
 func (n *nodesByDistance) remove(id nodeID) {
 	for i, v := range n.entries {
-		if v.id == id {
+		if v.ID == id {
 			n.entries = append(n.entries[:i], n.entries[i+1:]...)
 			return
 		}
@@ -79,14 +81,14 @@ func (n *nodesByDistance) Less(i, j int) bool {
 		return res
 	}
 
-	iDist := distance(n.entries[i].id, n.target)
-	jDist := distance(n.entries[j].id, n.target)
+	iDist := distance(n.entries[i].ID, n.target)
+	jDist := distance(n.entries[j].ID, n.target)
 
 	return iDist.Cmp(jDist) == -1
 }
 
-func newID() (nodeID, error) {
+func newID() nodeID {
 	var id nodeID
-	_, err := rand.Read(id.Bytes())
-	return id, err
+	rand.Read(id[:])
+	return id
 }
