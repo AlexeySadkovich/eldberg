@@ -1,6 +1,7 @@
 package discover
 
 import (
+	"bytes"
 	crand "crypto/rand"
 	"encoding/binary"
 	"fmt"
@@ -44,10 +45,6 @@ type DHT struct {
 
 	logger *zap.SugaredLogger
 }
-
-const (
-	localAddr = "127.0.0.1"
-)
 
 func New(config config.Config, logger *zap.SugaredLogger) *DHT {
 	nodeConfig := config.GetNodeConfig()
@@ -104,7 +101,24 @@ func (dht *DHT) Bootstrap() error {
 		return nil
 	}
 
-	dht.net.BroadcastFindNode(dht.bootnodes)
+	for _, v := range dht.bootnodes {
+		// Check if node id is unknown.
+		if bytes.Compare(v.ID.Bytes(), nilNodeID.Bytes()) == 0 {
+			id, ok := dht.net.ping(v)
+			if !ok {
+				continue
+			}
+			v.ID = id
+
+			dht.addNode(v)
+		} else {
+			dht.addNode(v)
+		}
+	}
+
+	if dht.NodesAmount() > 0 {
+		dht.iterate(dht.selfID)
+	}
 
 	return nil
 }
@@ -144,13 +158,12 @@ func (dht *DHT) addNode(node *netnode) {
 
 	dht.mutex.Lock()
 	defer dht.mutex.Unlock()
-
 	buc := dht.buckets[idx]
 
 	if buc.full() {
 		// Check if first node in bucket available. if not -
 		// we may remove it.
-		if !dht.net.IsNodeAvailable(buc.entries[0]) {
+		if _, ok := dht.net.ping(buc.entries[0]); !ok {
 			buc.removeNodeByIndex(0)
 			buc.appendNode(node)
 		} else {
@@ -179,6 +192,8 @@ func (dht *DHT) getClosestNodes(num int, target nodeID, ignored []*netnode) *nod
 		if r < keyBits {
 			idxList = append(idxList, r)
 		}
+		l--
+		r++
 	}
 
 	nodes := &nodesByDistance{target: target}
@@ -271,7 +286,7 @@ func (dht *DHT) loop() {
 		select {
 		case from := <-dht.net.OnFindNode():
 			dht.addNode(from)
-			closest := dht.getClosestNodes(bucketSize, from.ID, nil)
+			closest := dht.getClosestNodes(bucketSize, from.ID, []*netnode{from})
 			dht.net.SendNodes(from, closest.entries)
 		case nodes := <-dht.net.Nodes():
 			for _, n := range nodes {

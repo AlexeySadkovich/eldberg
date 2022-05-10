@@ -2,8 +2,10 @@ package discover
 
 import (
 	"bytes"
+	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"io"
 )
 
 type messageType int
@@ -16,6 +18,7 @@ const (
 )
 
 type message struct {
+	ID   uint64
 	From *netnode
 	Type messageType
 	Data interface{}
@@ -48,20 +51,46 @@ func serializeMessage(msg *message) ([]byte, error) {
 
 	buf := bytes.Buffer{}
 	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(msg)
-	if err != nil {
+	if err := enc.Encode(msg); err != nil {
 		return nil, fmt.Errorf("encode: %w", err)
 	}
 
-	return buf.Bytes(), nil
+	length := uint64(buf.Len())
+	var lengthBytes [8]byte
+	binary.PutUvarint(lengthBytes[:], length)
+
+	result := make([]byte, 0, 8+length)
+	result = append(result, lengthBytes[:]...)
+	result = append(result, buf.Bytes()...)
+
+	return result, nil
 }
 
-func deserializeMessage(data []byte) (*message, error) {
-	msg := &message{}
-	buf := bytes.NewBuffer(data)
-	dec := gob.NewDecoder(buf)
-	err := dec.Decode(msg)
+func deserializeMessage(data io.Reader) (*message, error) {
+	gob.Register([]*netnode{})
+
+	lengthBytes := make([]byte, 8)
+	_, err := data.Read(lengthBytes)
 	if err != nil {
+		return nil, fmt.Errorf("read length bytes: %w", err)
+	}
+
+	lengthReader := bytes.NewBuffer(lengthBytes)
+	length, err := binary.ReadUvarint(lengthReader)
+	if err != nil {
+		return nil, fmt.Errorf("read length: %w", err)
+	}
+
+	msgBytes := make([]byte, length)
+	_, err = data.Read(msgBytes)
+	if err != nil {
+		return nil, fmt.Errorf("read message bytes: %w", err)
+	}
+
+	msg := &message{}
+	buf := bytes.NewBuffer(msgBytes)
+	dec := gob.NewDecoder(buf)
+	if err := dec.Decode(msg); err != nil {
 		return nil, fmt.Errorf("decode: %w", err)
 	}
 

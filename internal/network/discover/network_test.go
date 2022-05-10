@@ -22,10 +22,11 @@ func TestNetwork_PingPong(t *testing.T) {
 
 	resp, err := n1.sendPing(n2.Self())
 	require.NoError(t, err)
+	awaited := resp.await(pingTimeout)
 
 	select {
-	case <-resp.received():
-	case <-resp.timeout():
+	case <-awaited.received():
+	case <-awaited.timeout():
 		require.Fail(t, "response time out")
 	}
 }
@@ -52,19 +53,20 @@ func TestNetwork_SendNodes(t *testing.T) {
 		},
 	}
 
-	resp, err := n2.sendFindNodeAwaited(n1.Self())
+	resp, err := n2.sendFindNode(n1.Self())
+	require.NoError(t, err)
+	awaited := resp.await(responseTimeout)
 
 	n1.SendNodes(n2.Self(), expNodes)
-	require.NoError(t, err)
 
-	var resNodes []*netnode
 	select {
-	case resNodes = <-n2.nodesCh:
-	case <-resp.timeout():
+	case <-awaited.received():
+		nodes, ok := awaited.data().([]*netnode)
+		require.True(t, ok)
+		require.Equal(t, expNodes, nodes)
+	case <-awaited.timeout():
 		require.Fail(t, "response time out")
 	case <-time.After(2 * time.Second):
 		require.Fail(t, "wait time out")
 	}
-
-	require.Equal(t, expNodes, resNodes)
 }

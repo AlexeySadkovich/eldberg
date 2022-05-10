@@ -5,6 +5,7 @@ import "time"
 type response struct {
 	from nodeID
 	typ  messageType
+	data interface{}
 	rec  chan struct{} // response received
 }
 
@@ -57,6 +58,10 @@ func (r *response) received() chan struct{} {
 
 func (r *awaitedResponse) from() nodeID {
 	return r.wrapped.from
+}
+
+func (r *awaitedResponse) data() interface{} {
+	return r.wrapped.data
 }
 
 func (r *awaitedResponse) received() chan struct{} {
