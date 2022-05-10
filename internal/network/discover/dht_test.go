@@ -1,12 +1,14 @@
 package discover
 
 import (
-	"github.com/AlexeySadkovich/eldberg/config"
-	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+
+	"github.com/AlexeySadkovich/eldberg/config"
 )
 
 func TestTwentyNodes(t *testing.T) {

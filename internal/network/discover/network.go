@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"go.uber.org/atomic"
 	"io"
 	"math/rand"
 	"net"
 	"sort"
 	"sync"
 
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 )
 

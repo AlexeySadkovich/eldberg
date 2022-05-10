@@ -1,11 +1,12 @@
 package discover
 
 import (
-	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestNetwork_PingPong(t *testing.T) {
