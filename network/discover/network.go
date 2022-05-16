@@ -42,7 +42,7 @@ type Network struct {
 }
 
 const (
-	maxPacketSize = 1024
+	maxPacketSize = 2048
 )
 
 func newNetwork(id nodeID, ip string, port int, logger *zap.SugaredLogger) (*Network, error) {
@@ -192,6 +192,8 @@ func (n *Network) FindNode(closest *nodesByDistance) (int64, []nodeID) {
 				continue
 			}
 
+			n.nodesCh <- closest.entries
+
 			return addedTotal.Load(), unavailableNodes
 		} else {
 			closestNode = closest.entries[0].ID
@@ -324,7 +326,7 @@ func (n *Network) send(dst *netnode, msg *message) error {
 
 // listen waits for incoming UDP packets.
 func (n *Network) listen() {
-	buf := make([]byte, 2048)
+	buf := make([]byte, maxPacketSize)
 	for {
 		_, _, err := n.conn.ReadFromUDP(buf)
 		if IsTemporaryErr(err) {
